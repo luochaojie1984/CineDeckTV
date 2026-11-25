@@ -7,8 +7,8 @@ import UIKit
 /// 已按 1.1.3 真实头文件核对（非臆造）：
 /// - 类初始化：init(content:options:videoRendering:audioRendering:)
 /// - 渲染视图：FSVideoRenderView.createMetalRenderView() -> UIView & FSVideoRenderingProtocol
-/// - 通知：FSPlayerIsPreparedToPlayNotification / FSPlayerLoadStateDidChangeNotification
-///         FSPlayerPlaybackStateDidChangeNotification / FSPlayerDidFinishNotification
+/// - 通知：NSNotification.Name.FSPlayerIsPreparedToPlay / NSNotification.Name.FSPlayerLoadStateDidChange
+///         NSNotification.Name.FSPlayerPlaybackStateDidChange / NSNotification.Name.FSPlayerDidFinish
 /// - 硬解热切：switchVideoDecoder(_:)；精确寻帧开关：enableAccurateSeek(_:)
 @MainActor
 public final class FSPlayerEngineAdapter: PlayerEngine {
@@ -112,10 +112,10 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
     private func installObservers(for player: FSPlayer) {
         let center = NotificationCenter.default
         let names: [(NSNotification.Name, String)] = [
-            (FSPlayerIsPreparedToPlayNotification, "prepared"),
-            (FSPlayerLoadStateDidChangeNotification, "loadState"),
-            (FSPlayerPlaybackStateDidChangeNotification, "playbackState"),
-            (FSPlayerFirstVideoFrameRenderedNotification, "firstFrame")
+            (NSNotification.Name.FSPlayerIsPreparedToPlay, "prepared"),
+            (NSNotification.Name.FSPlayerLoadStateDidChange, "loadState"),
+            (NSNotification.Name.FSPlayerPlaybackStateDidChange, "playbackState"),
+            (NSNotification.Name.FSPlayerFirstVideoFrameRendered, "firstFrame")
         ]
         for (name, label) in names {
             let token = center.addObserver(forName: name, object: player, queue: .main) { [weak self] _ in
@@ -123,7 +123,7 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
             }
             observers.append(token)
         }
-        let finish = center.addObserver(forName: FSPlayerDidFinishNotification, object: player, queue: .main) { [weak self] _ in
+        let finish = center.addObserver(forName: NSNotification.Name.FSPlayerDidFinish, object: player, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.onFinish?() }
         }
         observers.append(finish)
