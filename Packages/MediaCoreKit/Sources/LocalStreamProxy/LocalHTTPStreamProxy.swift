@@ -1,5 +1,6 @@
 #if canImport(Network)
 import Foundation
+import NetworkVFS
 import Network
 
 /// 本地 127.0.0.1 HTTP Range 代理：把 VFS 缓存包装成播放器可直接吃的短 ASCII URL。
@@ -156,6 +157,7 @@ public actor LocalHTTPStreamProxy {
 
 #else
 import Foundation
+import NetworkVFS
 
 /// Linux 平台：Network.framework 不可用，保留同一套接口供跨平台单测与语法预检。
 public actor LocalHTTPStreamProxy {
