@@ -1,8 +1,13 @@
 import SwiftUI
+import Darwin
 
 @main
 struct CineDeckTVApp: App {
     @StateObject private var environment = AppEnvironment()
+
+    init() {
+        signal(SIGPIPE, SIG_IGN)
+    }
     @Environment(\.scenePhase) private var scenePhase
     @State private var wasInBackground = false
 

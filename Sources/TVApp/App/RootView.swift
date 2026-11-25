@@ -132,7 +132,7 @@ struct RootView: View {
                 source: target.source,
                 entry: target.entry,
                 initialResumePosition: target.resumePosition,
-                previewOpenHUD: env.previewScenario == .playerHUD
+                previewOpenHUD: env.previewScenario == .playerHUD && env.smokeTestPlayback == nil
             )
             .environmentObject(env)
         }
@@ -162,7 +162,31 @@ struct RootView: View {
     }
 
     private func applyPreviewScenarioIfNeeded() {
-        guard !didApplyPreviewScenario, let scenario = env.previewScenario else { return }
+        guard !didApplyPreviewScenario else { return }
+        if let smoke = env.smokeTestPlayback {
+            didApplyPreviewScenario = true
+            let smokeSource = MediaSourceConfig(
+                id: UUID(uuidString: "33333333-3333-3333-3333-333333333333")!,
+                name: "Smoke Test",
+                kind: .smb,
+                host: "localhost",
+                port: 445,
+                username: "",
+                sharePath: "/"
+            )
+            let fileSize = (try? FileManager.default.attributesOfItem(atPath: smoke.videoFilePath)[.size] as? NSNumber)?.int64Value ?? 0
+            let name = (smoke.videoFilePath as NSString).lastPathComponent
+            let entry = VFSEntry(
+                path: smoke.videoFilePath,
+                name: name.isEmpty ? "smoke.mp4" : name,
+                isDirectory: false,
+                size: fileSize,
+                modifiedAt: Date()
+            )
+            playingTarget = PlaybackTarget(source: smokeSource, entry: entry, resumePosition: 0)
+            return
+        }
+        guard let scenario = env.previewScenario else { return }
         didApplyPreviewScenario = true
         switch scenario {
         case .home:

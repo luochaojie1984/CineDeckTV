@@ -15,6 +15,7 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
     public var onStateChange: ((String) -> Void)?
     public var onTimeUpdate: ((_ position: TimeInterval, _ duration: TimeInterval) -> Void)?
     public var onTracksChanged: ((_ audio: [MediaTrackItem], _ subtitles: [MediaTrackItem]) -> Void)?
+    public var onPrepared: (() -> Void)?
     public var onFirstFrameRendered: (() -> Void)?
     public var onFinish: (() -> Void)?
     public var onError: ((String) -> Void)?
@@ -56,7 +57,6 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         fsOptions.setPlayerOptionIntValue(1, forKey: "packet-buffering")
         fsOptions.setPlayerOptionIntValue(1, forKey: "framedrop")
         fsOptions.setPlayerOptionIntValue(1, forKey: "start-on-prepared")
-        fsOptions.setPlayerOptionIntValue(4, forKey: "threads")
         fsOptions.setPlayerOptionIntValue(0, forKey: "enable-accurate-seek")
         fsOptions.setPlayerOptionIntValue(800, forKey: "accurate-seek-timeout")
         fsOptions.setPlayerOptionIntValue(Int64(max(16 * 1024 * 1024, min(64 * 1024 * 1024, options.cacheBytes / 2))), forKey: "max-buffer-size")
@@ -207,8 +207,10 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         let mon = player.monitor
         stats.videoCodec = mon.vcodec ?? "—"
         stats.audioCodec = mon.acodec ?? "—"
-        let w = mon.width > 0 ? Int(mon.width) : Int(player.naturalSize.width)
-        let h = mon.height > 0 ? Int(mon.height) : Int(player.naturalSize.height)
+        let natW = player.naturalSize.width.isFinite ? Int(player.naturalSize.width) : 0
+        let natH = player.naturalSize.height.isFinite ? Int(player.naturalSize.height) : 0
+        let w = mon.width > 0 ? Int(mon.width) : natW
+        let h = mon.height > 0 ? Int(mon.height) : natH
         if w > 0 && h > 0 { stats.resolution = "\(w)×\(h)" }
         stats.fps = Double(mon.fps > 0 ? mon.fps : Float(player.fpsInMeta))
         stats.outputFPS = Double(player.fpsAtOutput)
@@ -270,8 +272,10 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
                 self.onTracksChanged?(lists.audio, lists.subtitles)
                 let mon = player.monitor
                 let fps = mon.fps > 0 ? mon.fps : Float(player.fpsInMeta)
-                let w = mon.width > 0 ? mon.width : Int32(player.naturalSize.width)
-                let h = mon.height > 0 ? mon.height : Int32(player.naturalSize.height)
+                let natW = player.naturalSize.width.isFinite ? Int32(player.naturalSize.width) : 0
+                let natH = player.naturalSize.height.isFinite ? Int32(player.naturalSize.height) : 0
+                let w = mon.width > 0 ? mon.width : natW
+                let h = mon.height > 0 ? mon.height : natH
                 let codecLower = (mon.vcodec ?? "").lowercased()
                 if fps > 1, w > 0, h > 0 {
                     DisplayModeCoordinator.shared.apply(
@@ -282,6 +286,7 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
                         isHEVC: codecLower.contains("hevc") || codecLower.contains("265")
                     )
                 }
+                self.onPrepared?()
                 self.onStateChange?("正在播放")
             }
         })

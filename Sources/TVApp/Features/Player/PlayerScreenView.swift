@@ -212,6 +212,7 @@ public struct PlayerScreenView: View {
                                 let resume = max(0, coordinator.currentTime)
                                 coordinator.load(
                                     url: lastLoadedURL ?? "",
+                                    fileName: activeEntry.name,
                                     startAt: resume,
                                     options: currentEngineOptions,
                                     preference: targetEngine
@@ -287,6 +288,7 @@ public struct PlayerScreenView: View {
         }
         .onChange(of: coordinator.lastError) { _, newError in
             if let newError, !didDismiss {
+                appendSmokeStatus("error:\(newError)")
                 errorMessage = newError
             }
         }
@@ -371,9 +373,19 @@ public struct PlayerScreenView: View {
         await startPlayback(for: activeEntry, startAt: resumeAt)
     }
 
+    private func appendSmokeStatus(_ event: String) {
+        guard let statusPath = env.smokeTestPlayback?.statusFilePath else { return }
+        let line = "\(String(format: "%.3f", CFAbsoluteTimeGetCurrent())) \(event)\n"
+        let url = URL(fileURLWithPath: statusPath)
+        var existing = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        existing += line
+        try? existing.write(to: url, atomically: true, encoding: .utf8)
+    }
+
     private func startPlayback(for item: VFSEntry, startAt: Double) async {
         currentEntry = item
         errorMessage = nil
+        appendSmokeStatus("start-playback")
         let effectiveStartAt = env.settings.enableResumePlayback ? startAt : 0
 
         if let oldProxy = proxy {
@@ -400,7 +412,7 @@ public struct PlayerScreenView: View {
                     var moovOffset: Int64?
                     var moovLength = 0
                     if ext == "mp4" || ext == "mov" || ext == "m4v" {
-                        if let moov = try? await provider.locateMoov(path: item.path), moov.offset > totalSize / 2 {
+                        if let moov = try? await cache.locateMP4Moov(), moov.offset > totalSize / 2 {
                             moovOffset = moov.offset
                             moovLength = moov.length
                         }
@@ -415,7 +427,14 @@ public struct PlayerScreenView: View {
                     }
                     self.proxy = proxy
                     self.lastLoadedURL = url.absoluteString
+                    appendSmokeStatus("proxy-ready")
 
+                    coordinator.onPreparedForSmokeTest = {
+                        appendSmokeStatus("fs-prepared")
+                    }
+                    coordinator.onFirstFrameForSmokeTest = {
+                        appendSmokeStatus("first-frame")
+                    }
                     coordinator.onPlaybackFinished = {
                         Task { @MainActor in await handlePlaybackEnded(currentItem: item) }
                     }
@@ -456,6 +475,7 @@ public struct PlayerScreenView: View {
             await resolveNextEpisode(provider: provider, currentItem: item)
         } catch {
             if !didDismiss {
+                appendSmokeStatus("error:\(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
         }

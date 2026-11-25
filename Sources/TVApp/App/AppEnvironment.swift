@@ -28,6 +28,40 @@ public enum PreviewScenario: String, Sendable {
     }
 }
 
+/// CI 实时播放冒烟测试配置（仅读取本地沙盒测试视频）。
+public struct SmokeTestPlaybackConfig: Sendable {
+    public let videoFilePath: String
+    public let statusFilePath: String?
+
+    public static func fromLaunchEnvironment() -> SmokeTestPlaybackConfig? {
+        var videoPath: String?
+        var statusPath: String?
+        for arg in CommandLine.arguments {
+            if arg.hasPrefix("--smoke-test-playback="),
+               let val = arg.split(separator: "=", maxSplits: 1).last,
+               !val.isEmpty {
+                videoPath = String(val)
+            } else if arg.hasPrefix("--smoke-test-status="),
+                      let val = arg.split(separator: "=", maxSplits: 1).last,
+                      !val.isEmpty {
+                statusPath = String(val)
+            }
+        }
+        if videoPath == nil,
+           let envVideo = ProcessInfo.processInfo.environment["CINEDECK_SMOKE_TEST_VIDEO"],
+           !envVideo.isEmpty {
+            videoPath = envVideo
+        }
+        if statusPath == nil,
+           let envStatus = ProcessInfo.processInfo.environment["CINEDECK_SMOKE_TEST_STATUS"],
+           !envStatus.isEmpty {
+            statusPath = envStatus
+        }
+        guard let videoPath else { return nil }
+        return SmokeTestPlaybackConfig(videoFilePath: videoPath, statusFilePath: statusPath)
+    }
+}
+
 /// 全局依赖容器：配置、服务器源、Keychain 密码、播放历史与预览演示数据。
 @MainActor
 public final class AppEnvironment: ObservableObject {
@@ -39,15 +73,20 @@ public final class AppEnvironment: ObservableObject {
     @Published public var lastError: String?
 
     public let previewScenario: PreviewScenario?
+    public let smokeTestPlayback: SmokeTestPlaybackConfig?
 
     private let settingsStore = AppSettingsStore()
     private let sourceStore = MediaSourceStore()
     private let historyStore = PlaybackHistoryStore()
     private var providers: [UUID: any VFSProvider] = [:]
 
-    public init(previewScenario: PreviewScenario? = PreviewScenario.fromLaunchEnvironment()) {
+    public init(
+        previewScenario: PreviewScenario? = PreviewScenario.fromLaunchEnvironment(),
+        smokeTestPlayback: SmokeTestPlaybackConfig? = SmokeTestPlaybackConfig.fromLaunchEnvironment()
+    ) {
         self.previewScenario = previewScenario
-        if previewScenario != nil {
+        self.smokeTestPlayback = smokeTestPlayback
+        if previewScenario != nil || smokeTestPlayback != nil {
             self.settings = AppSettings()
             let demoSources = Self.makePreviewSources()
             self.sources = demoSources
@@ -99,6 +138,9 @@ public final class AppEnvironment: ObservableObject {
     }
 
     public func provider(for source: MediaSourceConfig) async throws -> any VFSProvider {
+        if let smoke = smokeTestPlayback {
+            return LocalFileSmokeVFSProvider(filePath: smoke.videoFilePath)
+        }
         if previewScenario != nil {
             return PreviewVFSProvider(source: source)
         }
@@ -237,4 +279,68 @@ private actor PreviewVFSProvider: VFSProvider {
     func read(path: String, offset: Int64, length: Int) async throws -> Data { Data() }
     func size(path: String) async throws -> Int64 { 24_850_120_400 }
     func makeChunkSource(path: String) async throws -> any StreamChunkSource { DataChunkSource(data: Data()) }
+}
+
+/// CI 实时播放冒烟测试用本地文件只读 VFSProvider（经完整 ReadAheadStreamCache -> LocalHTTPStreamProxy -> FSPlayer 管线）。
+private actor LocalFileSmokeVFSProvider: VFSProvider {
+    nonisolated let kind: MediaSourceKind = .smb
+    private let filePath: String
+
+    init(filePath: String) {
+        self.filePath = filePath
+    }
+
+    func connect() async throws {}
+    func disconnect() async {}
+    func list(path: String) async throws -> [VFSEntry] { [] }
+
+    func readHead(path: String, length: Int) async throws -> Data {
+        try await read(path: path, offset: 0, length: length)
+    }
+
+    func readTail(path: String, length: Int) async throws -> Data {
+        let total = try await size(path: path)
+        let start = max(0, total - Int64(length))
+        return try await read(path: path, offset: start, length: Int(total - start))
+    }
+
+    func read(path: String, offset: Int64, length: Int) async throws -> Data {
+        let chunkSource = try await makeChunkSource(path: path)
+        return try await chunkSource.read(offset: offset, length: length)
+    }
+
+    func size(path: String) async throws -> Int64 {
+        let target = path.isEmpty ? filePath : path
+        let attrs = try FileManager.default.attributesOfItem(atPath: target)
+        return (attrs[.size] as? NSNumber)?.int64Value ?? 0
+    }
+
+    func makeChunkSource(path: String) async throws -> any StreamChunkSource {
+        let target = FileManager.default.fileExists(atPath: path) ? path : filePath
+        return try LocalFileSmokeChunkSource(url: URL(fileURLWithPath: target))
+    }
+}
+
+private actor LocalFileSmokeChunkSource: StreamChunkSource {
+    private let fileURL: URL
+    private let totalSize: Int64
+
+    init(url: URL) throws {
+        self.fileURL = url
+        let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
+        self.totalSize = (attrs[.size] as? NSNumber)?.int64Value ?? 0
+    }
+
+    func contentLength() async throws -> Int64 {
+        totalSize
+    }
+
+    func read(offset: Int64, length: Int) async throws -> Data {
+        guard offset >= 0, length > 0, offset < totalSize else { return Data() }
+        let fh = try FileHandle(forReadingFrom: fileURL)
+        defer { try? fh.close() }
+        try fh.seek(toOffset: UInt64(offset))
+        let capped = Int(min(Int64(length), totalSize - offset))
+        return try fh.read(upToCount: capped) ?? Data()
+    }
 }

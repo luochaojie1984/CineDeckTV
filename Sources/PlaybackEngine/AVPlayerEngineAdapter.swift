@@ -174,39 +174,46 @@ public final class AVPlayerEngineAdapter: PlayerEngine {
             }
         }
 
-        statusObservation = item.observe(\.status, options: [.new]) { [weak self] observedItem, _ in
+        statusObservation = Self.observeItemStatus(for: item, owner: self)
+        rateObservation = Self.observeRateStatus(for: avPlayer, owner: self)
+    }
+
+    nonisolated private static func observeItemStatus(for item: AVPlayerItem, owner: AVPlayerEngineAdapter) -> NSKeyValueObservation {
+        item.observe(\.status, options: [.new]) { [weak owner] observedItem, _ in
             let st = observedItem.status
             let errText = observedItem.error?.localizedDescription
-            Task { @MainActor [weak self] in
-                guard let self else { return }
+            Task { @MainActor [weak owner] in
+                guard let owner else { return }
                 switch st {
                 case .readyToPlay:
-                    self.isBuffering = false
-                    self.onStateChange?("正在播放")
-                    await self.refreshMetadataAndDisplayCriteria(item: observedItem)
+                    owner.isBuffering = false
+                    owner.onStateChange?("正在播放")
+                    await owner.refreshMetadataAndDisplayCriteria(item: observedItem)
                 case .failed:
-                    self.isBuffering = false
-                    self.onError?(errText ?? "AVPlayer 打开媒体失败")
+                    owner.isBuffering = false
+                    owner.onError?(errText ?? "AVPlayer 打开媒体失败")
                 default:
                     break
                 }
             }
         }
+    }
 
-        rateObservation = avPlayer.observe(\.timeControlStatus, options: [.new]) { [weak self] observed, _ in
+    nonisolated private static func observeRateStatus(for avPlayer: AVPlayer, owner: AVPlayerEngineAdapter) -> NSKeyValueObservation {
+        avPlayer.observe(\.timeControlStatus, options: [.new]) { [weak owner] observed, _ in
             let tcs = observed.timeControlStatus
-            Task { @MainActor [weak self] in
-                guard let self else { return }
+            Task { @MainActor [weak owner] in
+                guard let owner else { return }
                 switch tcs {
                 case .waitingToPlayAtSpecifiedRate:
-                    self.isBuffering = true
-                    self.onStateChange?("缓冲中…")
+                    owner.isBuffering = true
+                    owner.onStateChange?("缓冲中…")
                 case .playing:
-                    self.isBuffering = false
-                    self.onStateChange?("正在播放")
+                    owner.isBuffering = false
+                    owner.onStateChange?("正在播放")
                 case .paused:
-                    self.isBuffering = false
-                    self.onStateChange?("已暂停")
+                    owner.isBuffering = false
+                    owner.onStateChange?("已暂停")
                 @unknown default:
                     break
                 }

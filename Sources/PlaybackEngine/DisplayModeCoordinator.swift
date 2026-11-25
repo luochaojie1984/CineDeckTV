@@ -8,25 +8,30 @@ import CoreMedia
 public final class DisplayModeCoordinator {
     public static let shared = DisplayModeCoordinator()
 
+    /// Retain an explicit Objective-C class reference in AVKit.framework so ld_prime never strips AVKit linkage.
+    private static let retainedAVKitClass: AnyClass = AVDisplayManager.self
+
     private init() {}
 
     private func resolveManager() -> AVDisplayManager? {
+        _ = Self.retainedAVKitClass
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         for scene in scenes {
-            if let manager = scene.windows.first?.avDisplayManager {
-                return manager
-            }
+            guard let window = scene.windows.first,
+                  window.responds(to: Selector(("avDisplayManager"))) else { continue }
+            return window.avDisplayManager
         }
         return nil
     }
 
     public func apply(refreshRate: Float, formatDescription: CMFormatDescription? = nil, width: Int32 = 3840, height: Int32 = 2160, isHEVC: Bool = true) {
         guard let manager = resolveManager() else { return }
-        let rate: Float = refreshRate > 1 ? refreshRate : 60
+        let rate: Float = (refreshRate.isFinite && refreshRate > 1) ? refreshRate : 60
         if let formatDescription {
             manager.preferredDisplayCriteria = AVDisplayCriteria(refreshRate: rate, formatDescription: formatDescription)
             return
         }
+        guard width > 0, height > 0 else { return }
         // FSPlayer 路径下构造有效视频格式描述以触发 Match Frame Rate（不强改 SDR/HDR，以免误切）
         var desc: CMVideoFormatDescription?
         let codec: CMVideoCodecType = isHEVC ? kCMVideoCodecType_HEVC : kCMVideoCodecType_H264

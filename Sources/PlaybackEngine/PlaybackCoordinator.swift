@@ -34,6 +34,8 @@ public final class PlaybackCoordinator: ObservableObject {
     @Published public private(set) var techStats = PlaybackTechStats()
 
     public var onPlaybackFinished: (() -> Void)?
+    public var onPreparedForSmokeTest: (() -> Void)?
+    public var onFirstFrameForSmokeTest: (() -> Void)?
 
     private var current: (any PlayerEngine)?
     private var currentURL: String = ""
@@ -211,8 +213,12 @@ public final class PlaybackCoordinator: ObservableObject {
             self.audioTracks = audio
             self.embeddedSubtitleTracks = subs
         }
+        fsEngine.onPrepared = { [weak self] in
+            self?.onPreparedForSmokeTest?()
+        }
         fsEngine.onFirstFrameRendered = { [weak self] in
             self?.refreshTechStats()
+            self?.onFirstFrameForSmokeTest?()
         }
         fsEngine.onFinish = { [weak self] in
             self?.onPlaybackFinished?()

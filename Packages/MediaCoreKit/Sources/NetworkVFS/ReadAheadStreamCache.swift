@@ -211,7 +211,8 @@ public actor ReadAheadStreamCache {
                     let localStart = max(0, Int(offset - chunkStart))
                     let localEnd = min(chunk.count, Int(offset + Int64(length) - chunkStart))
                     if localEnd > localStart {
-                        out.append(chunk[localStart..<localEnd])
+                        let base = chunk.startIndex
+                        out.append(chunk[(base + localStart)..<(base + localEnd)])
                     }
                 }
             }
