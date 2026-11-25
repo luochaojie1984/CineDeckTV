@@ -23,7 +23,7 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         renderView = FSVideoRenderView.createMetalRenderView()
     }
 
-    public var isPlaying: Bool { player?.isPlaying ?? false }
+    public var isPlaying: Bool { player?.isPlaying() ?? false }
     public var currentTime: TimeInterval { player?.currentPlaybackTime ?? 0 }
     /// FSPlayer 的 duration 单位是毫秒。
     public var duration: TimeInterval { (player?.duration ?? 0) / 1000.0 }
@@ -82,7 +82,7 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
     // MARK: - FSOptions（数值来自设计规划 5.2 的实测调优）
 
     static func makeOptions(startAt: TimeInterval, options: EngineLoadOptions) -> FSOptions {
-        let fsOptions = FSOptions.optionsByDefault()
+        let fsOptions = FSOptions.byDefault()
         fsOptions.setPlayerOptionIntValue(options.hardwareDecode ? 1 : 0, forKey: "videotoolbox_hwaccel")
         fsOptions.setPlayerOptionIntValue(1, forKey: "copy_hw_frame")
         fsOptions.setFormatOptionIntValue(512 * 1024, forKey: "probesize")
@@ -111,19 +111,19 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
 
     private func installObservers(for player: FSPlayer) {
         let center = NotificationCenter.default
-        let names: [(String, String)] = [
+        let names: [(NSNotification.Name, String)] = [
             (FSPlayerIsPreparedToPlayNotification, "prepared"),
             (FSPlayerLoadStateDidChangeNotification, "loadState"),
             (FSPlayerPlaybackStateDidChangeNotification, "playbackState"),
             (FSPlayerFirstVideoFrameRenderedNotification, "firstFrame")
         ]
         for (name, label) in names {
-            let token = center.addObserver(forName: NSNotification.Name(name), object: player, queue: .main) { [weak self] _ in
+            let token = center.addObserver(forName: name, object: player, queue: .main) { [weak self] _ in
                 Task { @MainActor in self?.onStateChange?(label) }
             }
             observers.append(token)
         }
-        let finish = center.addObserver(forName: NSNotification.Name(FSPlayerDidFinishNotification), object: player, queue: .main) { [weak self] _ in
+        let finish = center.addObserver(forName: FSPlayerDidFinishNotification, object: player, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.onFinish?() }
         }
         observers.append(finish)
