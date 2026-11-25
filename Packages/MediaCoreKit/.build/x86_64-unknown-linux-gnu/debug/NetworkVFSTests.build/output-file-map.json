@@ -1,0 +1,11 @@
+{
+  "": {
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/master.swiftdeps"
+  },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/ReadAheadStreamCacheTests.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swiftdeps"
+  }
+}

@@ -17,11 +17,13 @@ public enum SubtitleEncodingDetector {
                 return Result(encoding: bom.encoding, hadBOM: true, text: text, confidence: 1.0)
             }
         }
+        // UTF-16 的 ASCII 区段全是 0x00 高位字节，会被 UTF-8 校验误判为合法文本，
+        // 因此含 NUL 的数据必须先走 UTF-16 启发式。
+        if data.prefix(4096).contains(0), let text = decodeUTF16WithoutBOM(data) {
+            return Result(encoding: .utf16, hadBOM: false, text: text, confidence: 0.9)
+        }
         if isValidUTF8(data), let text = String(data: data, encoding: .utf8) {
             return Result(encoding: .utf8, hadBOM: false, text: text, confidence: 1.0)
-        }
-        if let text = decodeUTF16WithoutBOM(data) {
-            return Result(encoding: .utf16, hadBOM: false, text: text, confidence: 0.8)
         }
         if let text = decodeGB18030Like(data) {
             return Result(encoding: .isoLatin1, hadBOM: false, text: text, confidence: 0.6)

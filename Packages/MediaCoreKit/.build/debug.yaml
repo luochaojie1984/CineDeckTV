@@ -1,0 +1,338 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "AppPreferences-x86_64-unknown-linux-gnu-debug.module": ["<AppPreferences-x86_64-unknown-linux-gnu-debug.module>"]
+  "AppPreferencesTests-x86_64-unknown-linux-gnu-debug.module": ["<AppPreferencesTests-x86_64-unknown-linux-gnu-debug.module>"]
+  "LocalStreamProxy-x86_64-unknown-linux-gnu-debug.module": ["<LocalStreamProxy-x86_64-unknown-linux-gnu-debug.module>"]
+  "LocalStreamProxyTests-x86_64-unknown-linux-gnu-debug.module": ["<LocalStreamProxyTests-x86_64-unknown-linux-gnu-debug.module>"]
+  "MediaCoreKitPackageDiscoveredTests-x86_64-unknown-linux-gnu-debug.module": ["<MediaCoreKitPackageDiscoveredTests-x86_64-unknown-linux-gnu-debug.module>"]
+  "MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.module": ["<MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.module>"]
+  "MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.test": ["<MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.test>"]
+  "NetworkVFS-x86_64-unknown-linux-gnu-debug.module": ["<NetworkVFS-x86_64-unknown-linux-gnu-debug.module>"]
+  "NetworkVFSTests-x86_64-unknown-linux-gnu-debug.module": ["<NetworkVFSTests-x86_64-unknown-linux-gnu-debug.module>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "SubtitleKit-x86_64-unknown-linux-gnu-debug.module": ["<SubtitleKit-x86_64-unknown-linux-gnu-debug.module>"]
+  "SubtitleKitTests-x86_64-unknown-linux-gnu-debug.module": ["<SubtitleKitTests-x86_64-unknown-linux-gnu-debug.module>"]
+  "main": ["<AppPreferences-x86_64-unknown-linux-gnu-debug.module>","<LocalStreamProxy-x86_64-unknown-linux-gnu-debug.module>","<NetworkVFS-x86_64-unknown-linux-gnu-debug.module>","<SubtitleKit-x86_64-unknown-linux-gnu-debug.module>"]
+  "test": ["<AppPreferences-x86_64-unknown-linux-gnu-debug.module>","<AppPreferencesTests-x86_64-unknown-linux-gnu-debug.module>","<LocalStreamProxy-x86_64-unknown-linux-gnu-debug.module>","<LocalStreamProxyTests-x86_64-unknown-linux-gnu-debug.module>","<MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.test>","<NetworkVFS-x86_64-unknown-linux-gnu-debug.module>","<NetworkVFSTests-x86_64-unknown-linux-gnu-debug.module>","<SubtitleKit-x86_64-unknown-linux-gnu-debug.module>","<SubtitleKitTests-x86_64-unknown-linux-gnu-debug.module>"]
+default: "main"
+nodes:
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/LocalStreamProxy/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/LocalStreamProxyTests/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+commands:
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppPreferences.swiftmodule.o":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferences.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppPreferences.swiftmodule.o"]
+    description: "Wrapping AST for AppPreferences for debugging"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-modulewrap","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferences.swiftmodule","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppPreferences.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettings.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettingsStore.swift"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/sources"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/sources"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swiftmodule.o":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferencesTests.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swiftmodule.o"]
+    description: "Wrapping AST for AppPreferencesTests for debugging"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-modulewrap","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferencesTests.swiftmodule","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/AppPreferencesTests.swift"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/sources"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/sources"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/LocalStreamProxy.swiftmodule.o":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxy.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/LocalStreamProxy.swiftmodule.o"]
+    description: "Wrapping AST for LocalStreamProxy for debugging"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-modulewrap","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxy.swiftmodule","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/LocalStreamProxy.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/LocalStreamProxy/LocalHTTPStreamProxy.swift"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/sources"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/sources"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swiftmodule.o":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxyTests.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swiftmodule.o"]
+    description: "Wrapping AST for LocalStreamProxyTests for debugging"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-modulewrap","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxyTests.swiftmodule","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/LocalStreamProxyTests/LocalStreamProxyTests.swift"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/sources"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/sources"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/MediaCoreKitPackageDiscoveredTests.swiftmodule.o":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageDiscoveredTests.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/MediaCoreKitPackageDiscoveredTests.swiftmodule.o"]
+    description: "Wrapping AST for MediaCoreKitPackageDiscoveredTests for debugging"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-modulewrap","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageDiscoveredTests.swiftmodule","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/MediaCoreKitPackageDiscoveredTests.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/AppPreferencesTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/LocalStreamProxyTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/NetworkVFSTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/SubtitleKitTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/all-discovered-tests.swift"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/sources"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/sources"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/all-discovered-tests.swift":
+    tool: test-discovery-tool
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swift.o"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/AppPreferencesTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/LocalStreamProxyTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/NetworkVFSTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/SubtitleKitTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/all-discovered-tests.swift"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/MediaCoreKitPackageTests.swiftmodule.o":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageTests.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/MediaCoreKitPackageTests.swiftmodule.o"]
+    description: "Wrapping AST for MediaCoreKitPackageTests for debugging"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-modulewrap","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageTests.swiftmodule","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/MediaCoreKitPackageTests.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.derived/runner.swift"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/sources"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/sources"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.derived/runner.swift":
+    tool: test-entry-point-tool
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageDiscoveredTests.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.derived/runner.swift"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppPreferences.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettings.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettingsStore.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/LocalHTTPStreamProxy.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/LocalStreamProxy.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/AppPreferencesTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/LocalStreamProxyTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/MediaCoreKitPackageDiscoveredTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/NetworkVFSTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/SubtitleKitTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/all-discovered-tests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/MediaCoreKitPackageTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/runner.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/NetworkVFS.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/ReadAheadStreamCache.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSModels.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/NetworkVFSTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleEncodingDetector.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleKit.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleMatcher.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleStyleConfig.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swiftmodule.o"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.product/Objects.LinkFileList"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/NetworkVFS.swiftmodule.o":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFS.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/NetworkVFS.swiftmodule.o"]
+    description: "Wrapping AST for NetworkVFS for debugging"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-modulewrap","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFS.swiftmodule","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/NetworkVFS.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/ReadAheadStreamCache.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSModels.swift"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/sources"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/sources"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/NetworkVFSTests.swiftmodule.o":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFSTests.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/NetworkVFSTests.swiftmodule.o"]
+    description: "Wrapping AST for NetworkVFSTests for debugging"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-modulewrap","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFSTests.swiftmodule","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/NetworkVFSTests.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/ReadAheadStreamCacheTests.swift"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/sources"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/sources"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleKit.swiftmodule.o":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKit.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleKit.swiftmodule.o"]
+    description: "Wrapping AST for SubtitleKit for debugging"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-modulewrap","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKit.swiftmodule","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleKit.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleEncodingDetector.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleMatcher.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleStyleConfig.swift"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/sources"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/sources"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swiftmodule.o":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKitTests.swiftmodule"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swiftmodule.o"]
+    description: "Wrapping AST for SubtitleKitTests for debugging"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-modulewrap","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKitTests.swiftmodule","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleKitTests.swift"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/sources"]
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/sources"
+
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt"
+
+  "<AppPreferences-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettings.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettingsStore.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferences.swiftmodule"]
+    outputs: ["<AppPreferences-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "<AppPreferencesTests-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferencesTests.swiftmodule"]
+    outputs: ["<AppPreferencesTests-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "<LocalStreamProxy-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/LocalHTTPStreamProxy.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxy.swiftmodule"]
+    outputs: ["<LocalStreamProxy-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "<LocalStreamProxyTests-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxyTests.swiftmodule"]
+    outputs: ["<LocalStreamProxyTests-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "<MediaCoreKitPackageDiscoveredTests-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/AppPreferencesTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/LocalStreamProxyTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/NetworkVFSTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/SubtitleKitTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/all-discovered-tests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageDiscoveredTests.swiftmodule"]
+    outputs: ["<MediaCoreKitPackageDiscoveredTests-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "<MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/runner.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageTests.swiftmodule"]
+    outputs: ["<MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "<MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.test>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.xctest"]
+    outputs: ["<MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.test>"]
+
+  "<NetworkVFS-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/ReadAheadStreamCache.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSModels.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFS.swiftmodule"]
+    outputs: ["<NetworkVFS-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "<NetworkVFSTests-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFSTests.swiftmodule"]
+    outputs: ["<NetworkVFSTests-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "<SubtitleKit-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleEncodingDetector.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleMatcher.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleStyleConfig.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKit.swiftmodule"]
+    outputs: ["<SubtitleKit-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "<SubtitleKitTests-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKitTests.swiftmodule"]
+    outputs: ["<SubtitleKitTests-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "C.AppPreferences-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettings.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettingsStore.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFS.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKit.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/sources"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettings.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettingsStore.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferences.swiftmodule"]
+    description: "Compiling Swift Module 'AppPreferences' (2 sources)"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-module-name","AppPreferences","-emit-dependencies","-emit-module","-emit-module-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferences.swiftmodule","-output-file-map","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/output-file-map.json","-parse-as-library","-incremental","-c","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/sources","-I","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-enable-batch-mode","-index-store-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-j48","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","6","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","mediacorekit","-Xcc","-fno-omit-frame-pointer"]
+
+  "C.AppPreferencesTests-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/AppPreferencesTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferences.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/sources"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferencesTests.swiftmodule"]
+    description: "Compiling Swift Module 'AppPreferencesTests' (1 sources)"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-module-name","AppPreferencesTests","-emit-dependencies","-emit-module","-emit-module-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferencesTests.swiftmodule","-output-file-map","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/sources","-I","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-enable-batch-mode","-index-store-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j48","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","6","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","mediacorekit","-Xcc","-fno-omit-frame-pointer"]
+
+  "C.LocalStreamProxy-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/LocalStreamProxy/LocalHTTPStreamProxy.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFS.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/sources"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/LocalHTTPStreamProxy.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxy.swiftmodule"]
+    description: "Compiling Swift Module 'LocalStreamProxy' (1 sources)"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-module-name","LocalStreamProxy","-emit-dependencies","-emit-module","-emit-module-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxy.swiftmodule","-output-file-map","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/output-file-map.json","-parse-as-library","-incremental","-c","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/sources","-I","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-enable-batch-mode","-index-store-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-j48","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","6","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","mediacorekit","-Xcc","-fno-omit-frame-pointer"]
+
+  "C.LocalStreamProxyTests-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/LocalStreamProxyTests/LocalStreamProxyTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxy.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/sources"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxyTests.swiftmodule"]
+    description: "Compiling Swift Module 'LocalStreamProxyTests' (1 sources)"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-module-name","LocalStreamProxyTests","-emit-dependencies","-emit-module","-emit-module-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxyTests.swiftmodule","-output-file-map","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/sources","-I","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-enable-batch-mode","-index-store-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j48","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","6","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","mediacorekit","-Xcc","-fno-omit-frame-pointer"]
+
+  "C.MediaCoreKitPackageDiscoveredTests-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/AppPreferencesTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/LocalStreamProxyTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/NetworkVFSTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/SubtitleKitTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/all-discovered-tests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKitTests.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFSTests.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxyTests.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferencesTests.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/sources"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/AppPreferencesTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/LocalStreamProxyTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/NetworkVFSTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/SubtitleKitTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/all-discovered-tests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageDiscoveredTests.swiftmodule"]
+    description: "Compiling Swift Module 'MediaCoreKitPackageDiscoveredTests' (5 sources)"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-module-name","MediaCoreKitPackageDiscoveredTests","-emit-dependencies","-emit-module","-emit-module-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageDiscoveredTests.swiftmodule","-output-file-map","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/sources","-I","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-enable-batch-mode","-index-store-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j48","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","mediacorekit","-Xcc","-fno-omit-frame-pointer"]
+
+  "C.MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.derived/runner.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKitTests.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFSTests.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/LocalStreamProxyTests.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferencesTests.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageDiscoveredTests.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/sources"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/runner.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageTests.swiftmodule"]
+    description: "Compiling Swift Module 'MediaCoreKitPackageTests' (1 sources)"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-module-name","MediaCoreKitPackageTests","-emit-dependencies","-emit-module","-emit-module-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/MediaCoreKitPackageTests.swiftmodule","-output-file-map","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/sources","-I","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-enable-batch-mode","-index-store-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j48","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","mediacorekit","-Xcc","-fno-omit-frame-pointer"]
+
+  "C.MediaCoreKitPackageTests-x86_64-unknown-linux-gnu-debug.test":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppPreferences.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettings.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettingsStore.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/LocalHTTPStreamProxy.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxy.build/LocalStreamProxy.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/AppPreferencesTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/LocalStreamProxyTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/MediaCoreKitPackageDiscoveredTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/NetworkVFSTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/SubtitleKitTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/all-discovered-tests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/MediaCoreKitPackageTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/runner.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/NetworkVFS.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/ReadAheadStreamCache.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSModels.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/NetworkVFSTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleEncodingDetector.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleKit.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleMatcher.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleStyleConfig.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swiftmodule.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.product/Objects.LinkFileList"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.xctest"]
+    description: "Linking ./.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.xctest"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-L","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug","-o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.xctest","-module-name","MediaCoreKitPackageTests","-emit-executable","-Xlinker","-rpath=$ORIGIN","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.product/Objects.LinkFileList","-target","x86_64-unknown-linux-gnu","-g"]
+
+  "C.NetworkVFS-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/ReadAheadStreamCache.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSModels.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/sources"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/ReadAheadStreamCache.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSModels.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFS.swiftmodule"]
+    description: "Compiling Swift Module 'NetworkVFS' (2 sources)"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-module-name","NetworkVFS","-emit-dependencies","-emit-module","-emit-module-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFS.swiftmodule","-output-file-map","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/output-file-map.json","-parse-as-library","-incremental","-c","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/sources","-I","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-enable-batch-mode","-index-store-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-j48","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","6","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","mediacorekit","-Xcc","-fno-omit-frame-pointer"]
+
+  "C.NetworkVFSTests-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/ReadAheadStreamCacheTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFS.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/sources"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFSTests.swiftmodule"]
+    description: "Compiling Swift Module 'NetworkVFSTests' (1 sources)"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-module-name","NetworkVFSTests","-emit-dependencies","-emit-module","-emit-module-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFSTests.swiftmodule","-output-file-map","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/sources","-I","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-enable-batch-mode","-index-store-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j48","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","6","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","mediacorekit","-Xcc","-fno-omit-frame-pointer"]
+
+  "C.SubtitleKit-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleEncodingDetector.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleMatcher.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleStyleConfig.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/sources"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleEncodingDetector.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleMatcher.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleStyleConfig.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKit.swiftmodule"]
+    description: "Compiling Swift Module 'SubtitleKit' (3 sources)"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-module-name","SubtitleKit","-emit-dependencies","-emit-module","-emit-module-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKit.swiftmodule","-output-file-map","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/output-file-map.json","-parse-as-library","-incremental","-c","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/sources","-I","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-enable-batch-mode","-index-store-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-j48","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","6","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","mediacorekit","-Xcc","-fno-omit-frame-pointer"]
+
+  "C.SubtitleKitTests-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleKitTests.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKit.swiftmodule","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/sources"]
+    outputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swift.o","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKitTests.swiftmodule"]
+    description: "Compiling Swift Module 'SubtitleKitTests' (1 sources)"
+    args: ["/data/toolchains/swift-6.1-RELEASE-ubuntu24.04/usr/bin/swiftc","-module-name","SubtitleKitTests","-emit-dependencies","-emit-module","-emit-module-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKitTests.swiftmodule","-output-file-map","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/sources","-I","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-enable-batch-mode","-index-store-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j48","-DSWIFT_PACKAGE","-DDEBUG","-module-cache-path","/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","6","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","mediacorekit","-Xcc","-fno-omit-frame-pointer"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/LocalStreamProxy/","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/","/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/","/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/","/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/LocalStreamProxyTests/","/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/","/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/","/data/projects/CineDeckTV/Packages/MediaCoreKit/Package.swift","/data/projects/CineDeckTV/Packages/MediaCoreKit/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+
