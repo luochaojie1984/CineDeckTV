@@ -33,6 +33,7 @@ public struct PlayerSideDrawer: View {
                 Label(kind == .subtitles ? "字幕与样式" : "音轨与解码控制",
                       systemImage: kind == .subtitles ? "captions.bubble.fill" : "waveform.and.magnifyingglass")
                     .font(TVTokens.Typography.sectionTitle)
+                    .lineLimit(1)
                 Spacer()
                 Button("完成", action: onClose)
                     .tvAdaptiveGlassButtonStyle(prominent: true)
@@ -49,8 +50,8 @@ public struct PlayerSideDrawer: View {
             }
         }
         .padding(28)
-        .frame(width: TVTokens.Size.drawerWidth)
-        .frame(maxHeight: 920)
+        .frame(width: 660)
+        .frame(maxHeight: 980)
         .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false)
     }
 
@@ -113,51 +114,45 @@ public struct PlayerSideDrawer: View {
             }
 
             Divider().overlay(Color.white.opacity(0.15))
-            Text("实时字幕外观与时间偏移")
-                .font(TVTokens.Typography.secondary)
-                .foregroundStyle(TVTokens.Color.secondaryText)
 
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("同步偏移：\(String(format: "%+.1fs", style.offsetSeconds))")
                     .font(TVTokens.Typography.secondary)
-                Spacer()
-                Button("-0.5s") { style.offsetSeconds -= 0.5 }.tvAdaptiveGlassButtonStyle()
-                Button("归零") { style.offsetSeconds = 0 }.tvAdaptiveGlassButtonStyle()
-                Button("+0.5s") { style.offsetSeconds += 0.5 }.tvAdaptiveGlassButtonStyle()
-            }
-
-            HStack(spacing: 10) {
-                Text("字号")
-                    .font(TVTokens.Typography.secondary)
-                Spacer()
-                ForEach([28.0, 34.0, 42.0, 50.0], id: \.self) { size in
-                    Button("\(Int(size))pt") { style.fontSize = size }
-                        .tvAdaptiveGlassButtonStyle(prominent: abs(style.fontSize - size) < 1)
+                    .foregroundStyle(TVTokens.Color.secondaryText)
+                HStack(spacing: 12) {
+                    drawerPill("-0.5s") { style.offsetSeconds -= 0.5 }
+                    drawerPill("归零", prominent: abs(style.offsetSeconds) < 0.05) { style.offsetSeconds = 0 }
+                    drawerPill("+0.5s") { style.offsetSeconds += 0.5 }
                 }
             }
 
-            HStack(spacing: 10) {
-                Text("配色")
+            VStack(alignment: .leading, spacing: 10) {
+                Text("字号大小")
                     .font(TVTokens.Typography.secondary)
-                Spacer()
-                Button("纯白") { style.foregroundHex = "#FFFFFF" }
-                    .tvAdaptiveGlassButtonStyle(prominent: style.foregroundHex == "#FFFFFF")
-                Button("暖黄") { style.foregroundHex = "#FFD859" }
-                    .tvAdaptiveGlassButtonStyle(prominent: style.foregroundHex == "#FFD859")
-                Button("冰蓝") { style.foregroundHex = "#7AD7FF" }
-                    .tvAdaptiveGlassButtonStyle(prominent: style.foregroundHex == "#7AD7FF")
+                    .foregroundStyle(TVTokens.Color.secondaryText)
+                HStack(spacing: 12) {
+                    ForEach([28.0, 34.0, 42.0, 50.0], id: \.self) { size in
+                        drawerPill("\(Int(size))pt", prominent: abs(style.fontSize - size) < 1) {
+                            style.fontSize = size
+                        }
+                    }
+                }
             }
 
-            HStack(spacing: 10) {
-                Text("底距")
+            VStack(alignment: .leading, spacing: 10) {
+                Text("字幕配色与底距")
                     .font(TVTokens.Typography.secondary)
-                Spacer()
-                Button("贴底") { style.bottomInset = 32 }
-                    .tvAdaptiveGlassButtonStyle(prominent: style.bottomInset <= 40)
-                Button("标准") { style.bottomInset = 56 }
-                    .tvAdaptiveGlassButtonStyle(prominent: style.bottomInset > 40 && style.bottomInset <= 80)
-                Button("抬高") { style.bottomInset = 96 }
-                    .tvAdaptiveGlassButtonStyle(prominent: style.bottomInset > 80)
+                    .foregroundStyle(TVTokens.Color.secondaryText)
+                HStack(spacing: 12) {
+                    drawerPill("纯白", prominent: style.foregroundHex == "#FFFFFF") { style.foregroundHex = "#FFFFFF" }
+                    drawerPill("暖黄", prominent: style.foregroundHex == "#FFD859") { style.foregroundHex = "#FFD859" }
+                    drawerPill("冰蓝", prominent: style.foregroundHex == "#7AD7FF") { style.foregroundHex = "#7AD7FF" }
+                }
+                HStack(spacing: 12) {
+                    drawerPill("贴底", prominent: style.bottomInset <= 40) { style.bottomInset = 32 }
+                    drawerPill("标准", prominent: style.bottomInset > 40 && style.bottomInset <= 80) { style.bottomInset = 56 }
+                    drawerPill("抬高", prominent: style.bottomInset > 80) { style.bottomInset = 96 }
+                }
             }
         }
     }
@@ -193,55 +188,54 @@ public struct PlayerSideDrawer: View {
             }
 
             Divider().overlay(Color.white.opacity(0.15))
-            Text("VideoToolbox 解码与双引擎热切")
-                .font(TVTokens.Typography.secondary)
-                .foregroundStyle(TVTokens.Color.secondaryText)
 
-            HStack(spacing: 12) {
-                Button(coordinator.isHardwareDecode ? "✅ 硬件解码 (VideoToolbox)" : "硬件解码") {
-                    onToggleHardwareDecode(true)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("VideoToolbox 解码与双引擎热切")
+                    .font(TVTokens.Typography.secondary)
+                    .foregroundStyle(TVTokens.Color.secondaryText)
+                HStack(spacing: 12) {
+                    drawerPill("硬件解码", prominent: coordinator.isHardwareDecode) { onToggleHardwareDecode(true) }
+                    drawerPill("软件解码", prominent: !coordinator.isHardwareDecode) { onToggleHardwareDecode(false) }
                 }
-                .tvAdaptiveGlassButtonStyle(prominent: coordinator.isHardwareDecode)
-
-                Button(!coordinator.isHardwareDecode ? "✅ FFmpeg 软件解码" : "软件解码") {
-                    onToggleHardwareDecode(false)
+                HStack(spacing: 12) {
+                    drawerPill("FSPlayer 主核", prominent: coordinator.activeEngine == .fsplayer) { onSwitchEngine(.fsplayer) }
+                    drawerPill("AVPlayer 杜比", prominent: coordinator.activeEngine == .avplayer) { onSwitchEngine(.avplayer) }
                 }
-                .tvAdaptiveGlassButtonStyle(prominent: !coordinator.isHardwareDecode)
-            }
-
-            HStack(spacing: 12) {
-                Button("FSPlayer 主核") { onSwitchEngine(.fsplayer) }
-                    .tvAdaptiveGlassButtonStyle(prominent: coordinator.activeEngine == .fsplayer)
-                Button("AVPlayer 杜比") { onSwitchEngine(.avplayer) }
-                    .tvAdaptiveGlassButtonStyle(prominent: coordinator.activeEngine == .avplayer)
             }
 
             Divider().overlay(Color.white.opacity(0.15))
-            Text("倍速与画面裁切")
-                .font(TVTokens.Typography.secondary)
-                .foregroundStyle(TVTokens.Color.secondaryText)
 
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
-                ForEach([0.5, 1.0, 1.25, 1.5, 2.0, 3.0], id: \.self) { rate in
-                    Button("\(String(format: "%.2g", rate))x") {
-                        onChangeRate(rate)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("播放倍速与画面比例")
+                    .font(TVTokens.Typography.secondary)
+                    .foregroundStyle(TVTokens.Color.secondaryText)
+                HStack(spacing: 10) {
+                    ForEach([0.5, 1.0, 1.25, 1.5, 2.0, 3.0], id: \.self) { rate in
+                        drawerPill("\(String(format: "%.2g", rate))x") { onChangeRate(rate) }
                     }
-                    .tvAdaptiveGlassButtonStyle()
                 }
-            }
-
-            HStack(spacing: 10) {
-                ForEach(ScalingMode.allCases, id: \.self) { mode in
-                    Button(mode.displayName) {
-                        onChangeScaling(mode)
+                HStack(spacing: 12) {
+                    ForEach(ScalingMode.allCases, id: \.self) { mode in
+                        drawerPill(mode.displayName) { onChangeScaling(mode) }
                     }
-                    .tvAdaptiveGlassButtonStyle()
                 }
             }
 
             Toggle("显示左上角实时码率与技术统计条", isOn: $showTechStats)
                 .font(TVTokens.Typography.secondary)
         }
+    }
+
+    private func drawerPill(_ title: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 20, weight: .semibold))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+        }
+        .tvAdaptiveGlassButtonStyle(prominent: prominent)
     }
 }
 
@@ -250,7 +244,7 @@ public struct TechStatsHUDPill: View {
     public let stats: PlaybackTechStats
 
     public var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
             Label(stats.engineName, systemImage: "cpu")
             Text("·")
             Text(stats.isHardwareDecode ? "HW 硬解" : "SW 软解")
@@ -268,9 +262,10 @@ public struct TechStatsHUDPill: View {
             Text("·")
             Text("丢帧 \(stats.droppedFrames)")
         }
-        .font(.system(size: 18, weight: .semibold, design: .monospaced))
+        .font(.system(size: 16, weight: .semibold, design: .monospaced))
         .lineLimit(1)
-        .padding(.horizontal, 20)
+        .minimumScaleFactor(0.75)
+        .padding(.horizontal, 18)
         .padding(.vertical, 10)
         .tvGlassSurface(cornerRadius: TVTokens.Radius.capsule, clear: true)
     }

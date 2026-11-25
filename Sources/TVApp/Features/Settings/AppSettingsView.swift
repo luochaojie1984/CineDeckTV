@@ -31,12 +31,23 @@ public struct AppSettingsView: View {
                         }
                     }
                     section("缓存上限") {
-                        HStack(spacing: 14) {
-                            ForEach([48, 96, 144, 192], id: \.self) { megabytes in
-                                Button("\(megabytes) MB") {
-                                    env.update(settings: mutated { $0.cacheMegabytes = megabytes })
+                        AdaptiveGlassContainer(spacing: 12) {
+                            HStack(spacing: 14) {
+                                ForEach([48, 96, 144, 192], id: \.self) { megabytes in
+                                    let selected = env.settings.cacheMegabytes == megabytes
+                                    Button {
+                                        env.update(settings: mutated { $0.cacheMegabytes = megabytes })
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            if selected { Image(systemName: "checkmark.circle.fill") }
+                                            Text("\(megabytes) MB")
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                    }
+                                    .tvAdaptiveGlassButtonStyle(prominent: selected)
+                                    .tint(selected ? TVTokens.Color.accent : (nil as Color?))
                                 }
-                                .tvAdaptiveGlassButtonStyle(prominent: env.settings.cacheMegabytes == megabytes)
                             }
                         }
                         Text("硬上限 192 MB（Jetsam 保护）")
@@ -44,15 +55,40 @@ public struct AppSettingsView: View {
                             .foregroundStyle(TVTokens.Color.secondaryText)
                     }
                     section("自动连播下一集") {
-                        HStack(spacing: 14) {
-                            Button("开") { env.update(settings: mutated { $0.autoPlayNextEpisode = true }) }
+                        AdaptiveGlassContainer(spacing: 12) {
+                            HStack(spacing: 14) {
+                                Button {
+                                    env.update(settings: mutated { $0.autoPlayNextEpisode = true })
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        if env.settings.autoPlayNextEpisode { Image(systemName: "checkmark.circle.fill") }
+                                        Text("开")
+                                    }
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 8)
+                                }
                                 .tvAdaptiveGlassButtonStyle(prominent: env.settings.autoPlayNextEpisode)
-                            Button("关") { env.update(settings: mutated { $0.autoPlayNextEpisode = false }) }
+                                .tint(env.settings.autoPlayNextEpisode ? TVTokens.Color.accent : (nil as Color?))
+
+                                Button {
+                                    env.update(settings: mutated { $0.autoPlayNextEpisode = false })
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        if !env.settings.autoPlayNextEpisode { Image(systemName: "checkmark.circle.fill") }
+                                        Text("关")
+                                    }
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 8)
+                                }
                                 .tvAdaptiveGlassButtonStyle(prominent: !env.settings.autoPlayNextEpisode)
+                                .tint(!env.settings.autoPlayNextEpisode ? TVTokens.Color.accent : (nil as Color?))
+                            }
                         }
                     }
                 }
-                .padding(40)
+                .padding(.leading, 80)
+                .padding(.trailing, 48)
+                .padding(.vertical, 36)
             }
         }
     }
@@ -77,8 +113,20 @@ public struct AppSettingsView: View {
         AdaptiveGlassContainer(spacing: 12) {
             HStack(spacing: 12) {
                 ForEach(Array(keys.enumerated()), id: \.offset) { entry in
-                    Button(entry.element.1) { onSelect(entry.element.0) }
-                        .tvAdaptiveGlassButtonStyle(prominent: entry.element.0 == selected)
+                    let isSelected = entry.element.0 == selected
+                    Button {
+                        onSelect(entry.element.0)
+                    } label: {
+                        HStack(spacing: 8) {
+                            if isSelected { Image(systemName: "checkmark.circle.fill") }
+                            Text(entry.element.1)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                    }
+                    .tvAdaptiveGlassButtonStyle(prominent: isSelected)
+                    .tint(isSelected ? TVTokens.Color.accent : (nil as Color?))
                 }
             }
         }

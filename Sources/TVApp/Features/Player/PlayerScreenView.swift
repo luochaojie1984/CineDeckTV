@@ -141,7 +141,8 @@ public struct PlayerScreenView: View {
                         TechStatsHUDPill(stats: previewOpenHUD ? Self.previewTechStats : coordinator.techStats)
                         Spacer()
                     }
-                    .padding(.horizontal, 48)
+                    .padding(.leading, 48)
+                    .padding(.trailing, activeDrawer != nil ? 730 : 48)
                     .padding(.top, 36)
                     Spacer()
                 }
@@ -669,7 +670,8 @@ public struct PlayerScreenView: View {
             }
             .padding(28)
             .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false)
-            .padding(.horizontal, 48)
+            .padding(.leading, 48)
+            .padding(.trailing, activeDrawer != nil ? 730 : 48)
             .padding(.bottom, 34)
         }
     }
