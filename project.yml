@@ -11,8 +11,8 @@ packages:
   FSPlayer:
     url: https://github.com/debugly/FSPlayer-SPM.git
     exactVersion: 1.1.3
+  # 通过 scripts/prepare_amsmb2.sh 检出并注入 5 项 Windows/SMB2 关键补丁后替换成本地路径
   AMSMB2:
-    # 通过 scripts/prepare_amsmb2.sh 检出并注入 5 项 Windows/SMB2 关键补丁后替换成本地路径
     url: https://github.com/amosavian/AMSMB2.git
     revision: 8d8e19ebeaf71cca1f66b3689034b58ba333c44f
 
