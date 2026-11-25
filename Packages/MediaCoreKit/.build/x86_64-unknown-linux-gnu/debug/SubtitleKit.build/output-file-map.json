@@ -14,6 +14,12 @@
     "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleMatcher~partial.swiftmodule",
     "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleMatcher.swiftdeps"
   },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleParser.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleParser.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleParser.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleParser~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleParser.swiftdeps"
+  },
   "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleStyleConfig.swift": {
     "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleStyleConfig.d",
     "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleStyleConfig.swift.o",

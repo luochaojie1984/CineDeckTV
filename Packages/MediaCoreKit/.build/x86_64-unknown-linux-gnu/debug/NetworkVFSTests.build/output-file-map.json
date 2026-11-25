@@ -2,10 +2,22 @@
   "": {
     "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/master.swiftdeps"
   },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/EdgeCaseTests.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/EdgeCaseTests.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/EdgeCaseTests.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/EdgeCaseTests~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/EdgeCaseTests.swiftdeps"
+  },
   "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/ReadAheadStreamCacheTests.swift": {
     "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.d",
     "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o",
     "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests~partial.swiftmodule",
     "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swiftdeps"
+  },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/WebDAVProviderTests.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/WebDAVProviderTests.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/WebDAVProviderTests.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/WebDAVProviderTests~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/WebDAVProviderTests.swiftdeps"
   }
 }

@@ -144,7 +144,7 @@ public actor ReadAheadStreamCache {
             if type == "moov" {
                 return (cursor, Int(min(atomSize, Int64(Int.max))))
             }
-            if type == "mdat" { return nil }
+            // mdat 只跳过；moov 可能在它之后（大量 10–14 MB 尾部 moov 的片源）。
             cursor += atomSize
             if cursor >= totalSize { return nil }
         }

@@ -1,2 +1,4 @@
 /data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/ReadAheadStreamCache.swift
 /data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSModels.swift
+/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSProvider.swift
+/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/WebDAVProvider.swift

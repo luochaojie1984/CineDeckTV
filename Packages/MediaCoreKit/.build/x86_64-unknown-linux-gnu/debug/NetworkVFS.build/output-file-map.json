@@ -13,5 +13,17 @@
     "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSModels.swift.o",
     "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSModels~partial.swiftmodule",
     "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSModels.swiftdeps"
+  },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSProvider.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSProvider.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSProvider.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSProvider~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSProvider.swiftdeps"
+  },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/WebDAVProvider.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/WebDAVProvider.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/WebDAVProvider.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/WebDAVProvider~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/WebDAVProvider.swiftdeps"
   }
 }

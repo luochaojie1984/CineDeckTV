@@ -36,6 +36,18 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/MediaSourceStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/PlaybackHistoryStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/WebDAVBackupService.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt"
         },
         {
@@ -56,7 +68,10 @@
       "moduleOutputPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferences.swiftmodule",
       "objects" : [
         "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettings.swift.o",
-        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettingsStore.swift.o"
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettingsStore.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/MediaSourceStore.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/PlaybackHistoryStore.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/WebDAVBackupService.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -97,13 +112,28 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/MediaSourceStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/PlaybackHistoryStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/WebDAVBackupService.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferences.swiftmodule"
         }
       ],
       "prepareForIndexing" : false,
       "sources" : [
         "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettings.swift",
-        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettingsStore.swift"
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettingsStore.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/MediaSourceStore.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/PlaybackHistoryStore.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/WebDAVBackupService.swift"
       ],
       "tempsPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build",
       "wholeModuleOptimization" : false
@@ -116,6 +146,14 @@
         {
           "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/AppPreferencesTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/HistoryLimitTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/StoresTests.swift"
         },
         {
           "kind" : "file",
@@ -134,7 +172,9 @@
       "moduleName" : "AppPreferencesTests",
       "moduleOutputPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferencesTests.swiftmodule",
       "objects" : [
-        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swift.o"
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/HistoryLimitTests.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/StoresTests.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -173,12 +213,22 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/HistoryLimitTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/StoresTests.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/AppPreferencesTests.swiftmodule"
         }
       ],
       "prepareForIndexing" : false,
       "sources" : [
-        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/AppPreferencesTests.swift"
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/AppPreferencesTests.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/HistoryLimitTests.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/StoresTests.swift"
       ],
       "tempsPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build",
       "wholeModuleOptimization" : false
@@ -560,6 +610,14 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSProvider.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/WebDAVProvider.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/swift-version--2913611320317DD3.txt"
         },
         {
@@ -572,7 +630,9 @@
       "moduleOutputPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFS.swiftmodule",
       "objects" : [
         "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/ReadAheadStreamCache.swift.o",
-        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSModels.swift.o"
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSModels.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSProvider.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/WebDAVProvider.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -613,13 +673,23 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSProvider.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/WebDAVProvider.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFS.swiftmodule"
         }
       ],
       "prepareForIndexing" : false,
       "sources" : [
         "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/ReadAheadStreamCache.swift",
-        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSModels.swift"
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSModels.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSProvider.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/WebDAVProvider.swift"
       ],
       "tempsPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build",
       "wholeModuleOptimization" : false
@@ -631,7 +701,15 @@
       "inputs" : [
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/EdgeCaseTests.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/ReadAheadStreamCacheTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/WebDAVProviderTests.swift"
         },
         {
           "kind" : "file",
@@ -650,7 +728,9 @@
       "moduleName" : "NetworkVFSTests",
       "moduleOutputPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/NetworkVFSTests.swiftmodule",
       "objects" : [
-        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o"
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/EdgeCaseTests.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/WebDAVProviderTests.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -685,7 +765,15 @@
       "outputs" : [
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/EdgeCaseTests.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/WebDAVProviderTests.swift.o"
         },
         {
           "kind" : "file",
@@ -694,7 +782,9 @@
       ],
       "prepareForIndexing" : false,
       "sources" : [
-        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/ReadAheadStreamCacheTests.swift"
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/EdgeCaseTests.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/ReadAheadStreamCacheTests.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/WebDAVProviderTests.swift"
       ],
       "tempsPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build",
       "wholeModuleOptimization" : false
@@ -711,6 +801,10 @@
         {
           "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleMatcher.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleParser.swift"
         },
         {
           "kind" : "file",
@@ -731,6 +825,7 @@
       "objects" : [
         "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleEncodingDetector.swift.o",
         "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleMatcher.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleParser.swift.o",
         "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleStyleConfig.swift.o"
       ],
       "otherArguments" : [
@@ -772,6 +867,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleParser.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleStyleConfig.swift.o"
         },
         {
@@ -783,6 +882,7 @@
       "sources" : [
         "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleEncodingDetector.swift",
         "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleMatcher.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleParser.swift",
         "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleStyleConfig.swift"
       ],
       "tempsPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build",
@@ -796,6 +896,10 @@
         {
           "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleKitTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleParserTests.swift"
         },
         {
           "kind" : "file",
@@ -814,7 +918,8 @@
       "moduleName" : "SubtitleKitTests",
       "moduleOutputPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKitTests.swiftmodule",
       "objects" : [
-        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swift.o"
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swift.o",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleParserTests.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -853,12 +958,17 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleParserTests.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules/SubtitleKitTests.swiftmodule"
         }
       ],
       "prepareForIndexing" : false,
       "sources" : [
-        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleKitTests.swift"
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleKitTests.swift",
+        "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleParserTests.swift"
       ],
       "tempsPath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build",
       "wholeModuleOptimization" : false
@@ -878,6 +988,9 @@
       "-c",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettings.swift",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettingsStore.swift",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/MediaSourceStore.swift",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/PlaybackHistoryStore.swift",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/WebDAVBackupService.swift",
       "-I",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules",
       "-target",
@@ -917,6 +1030,8 @@
       "-incremental",
       "-c",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/AppPreferencesTests.swift",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/HistoryLimitTests.swift",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/StoresTests.swift",
       "-I",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules",
       "-target",
@@ -1121,6 +1236,8 @@
       "-c",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/ReadAheadStreamCache.swift",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSModels.swift",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSProvider.swift",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/WebDAVProvider.swift",
       "-I",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules",
       "-target",
@@ -1159,7 +1276,9 @@
       "mediacorekit",
       "-incremental",
       "-c",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/EdgeCaseTests.swift",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/ReadAheadStreamCacheTests.swift",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/WebDAVProviderTests.swift",
       "-I",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules",
       "-target",
@@ -1202,6 +1321,7 @@
       "-c",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleEncodingDetector.swift",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleMatcher.swift",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleParser.swift",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleStyleConfig.swift",
       "-I",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules",
@@ -1242,6 +1362,7 @@
       "-incremental",
       "-c",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleKitTests.swift",
+      "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleParserTests.swift",
       "-I",
       "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/Modules",
       "-target",
@@ -1335,7 +1456,19 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/HistoryLimitTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/StoresTests.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/LocalStreamProxyTests.build/LocalStreamProxyTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/EdgeCaseTests.swift.o"
         },
         {
           "kind" : "file",
@@ -1343,7 +1476,15 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/WebDAVProviderTests.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleParserTests.swift.o"
         }
       ],
       "outputs" : [
@@ -1404,6 +1545,18 @@
         {
           "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettingsStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/MediaSourceStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/PlaybackHistoryStore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/WebDAVBackupService.swift"
         }
       ],
       "outputFilePath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/sources"
@@ -1418,6 +1571,14 @@
         {
           "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/AppPreferencesTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/HistoryLimitTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/StoresTests.swift"
         }
       ],
       "outputFilePath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/sources"
@@ -1515,11 +1676,31 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/MediaSourceStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/PlaybackHistoryStore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/WebDAVBackupService.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swift.o"
         },
         {
           "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/HistoryLimitTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/StoresTests.swift.o"
         },
         {
           "kind" : "file",
@@ -1583,11 +1764,27 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/VFSProvider.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/WebDAVProvider.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/EdgeCaseTests.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/NetworkVFSTests.swiftmodule.o"
         },
         {
           "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/WebDAVProviderTests.swift.o"
         },
         {
           "kind" : "file",
@@ -1603,6 +1800,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleParser.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleStyleConfig.swift.o"
         },
         {
@@ -1612,6 +1813,10 @@
         {
           "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleKitTests.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/SubtitleParserTests.swift.o"
         }
       ],
       "outputFilePath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.product/Objects.LinkFileList"
@@ -1630,6 +1835,14 @@
         {
           "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSModels.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/VFSProvider.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/NetworkVFS/WebDAVProvider.swift"
         }
       ],
       "outputFilePath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFS.build/sources"
@@ -1643,7 +1856,15 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/EdgeCaseTests.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/ReadAheadStreamCacheTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/WebDAVProviderTests.swift"
         }
       ],
       "outputFilePath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/sources"
@@ -1665,6 +1886,10 @@
         },
         {
           "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleParser.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/SubtitleKit/SubtitleStyleConfig.swift"
         }
       ],
@@ -1680,6 +1905,10 @@
         {
           "kind" : "file",
           "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleKitTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/SubtitleKitTests/SubtitleParserTests.swift"
         }
       ],
       "outputFilePath" : "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKitTests.build/sources"

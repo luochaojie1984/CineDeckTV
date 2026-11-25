@@ -7,5 +7,17 @@
     "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swift.o",
     "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests~partial.swiftmodule",
     "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/AppPreferencesTests.swiftdeps"
+  },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/HistoryLimitTests.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/HistoryLimitTests.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/HistoryLimitTests.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/HistoryLimitTests~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/HistoryLimitTests.swiftdeps"
+  },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/AppPreferencesTests/StoresTests.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/StoresTests.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/StoresTests.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/StoresTests~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferencesTests.build/StoresTests.swiftdeps"
   }
 }

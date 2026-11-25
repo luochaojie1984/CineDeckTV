@@ -10,6 +10,8 @@
 -lFoundation
 -lFoundationEssentials
 -lFoundationInternationalization
+-lFoundationNetworking
+-lFoundationXML
 -lTesting
 -lXCTest
 -lm

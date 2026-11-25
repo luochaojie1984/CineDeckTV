@@ -13,5 +13,23 @@
     "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettingsStore.swift.o",
     "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettingsStore~partial.swiftmodule",
     "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/AppSettingsStore.swiftdeps"
+  },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/MediaSourceStore.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/MediaSourceStore.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/MediaSourceStore.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/MediaSourceStore~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/MediaSourceStore.swiftdeps"
+  },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/PlaybackHistoryStore.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/PlaybackHistoryStore.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/PlaybackHistoryStore.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/PlaybackHistoryStore~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/PlaybackHistoryStore.swiftdeps"
+  },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/WebDAVBackupService.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/WebDAVBackupService.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/WebDAVBackupService.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/WebDAVBackupService~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/AppPreferences.build/WebDAVBackupService.swiftdeps"
   }
 }

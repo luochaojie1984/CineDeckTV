@@ -1,2 +1,5 @@
 /data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettings.swift
 /data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/AppSettingsStore.swift
+/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/MediaSourceStore.swift
+/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/PlaybackHistoryStore.swift
+/data/projects/CineDeckTV/Packages/MediaCoreKit/Sources/AppPreferences/WebDAVBackupService.swift

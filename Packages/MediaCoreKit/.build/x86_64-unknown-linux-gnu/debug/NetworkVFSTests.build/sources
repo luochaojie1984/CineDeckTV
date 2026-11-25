@@ -1,1 +1,3 @@
+/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/EdgeCaseTests.swift
 /data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/ReadAheadStreamCacheTests.swift
+/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/NetworkVFSTests/WebDAVProviderTests.swift
