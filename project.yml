@@ -9,14 +9,12 @@ packages:
   MediaCoreKit:
     path: Packages/MediaCoreKit
   FSPlayer:
-    # Step 0 实测：GitHub 最新稳定 tag = 1.1.3（1.1.4-beta-1 为 beta，不采用）
     url: https://github.com/debugly/FSPlayer-SPM.git
     exactVersion: 1.1.3
   AMSMB2:
-    # 4.0.3 已上游化设计文档 6.2 所列全部补丁：真实 NTSTATUS、FileHandle(smb2_pread_async)、
-    # shareEnum 的 Swift 回退、domain/workstation 走 C API。无需本地 patch 脚本。
+    # 通过 scripts/prepare_amsmb2.sh 检出并注入 5 项 Windows/SMB2 关键补丁后替换成本地路径
     url: https://github.com/amosavian/AMSMB2.git
-    exactVersion: 4.0.3
+    revision: 8d8e19ebeaf71cca1f66b3689034b58ba333c44f
 
 targets:
   CineDeckTV:
@@ -48,8 +46,8 @@ targets:
       path: Sources/TVApp/Info.plist
       properties:
         CFBundleDisplayName: CineDeckTV
-        CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "1"
+        CFBundleShortVersionString: "0.2.0"
+        CFBundleVersion: "2"
         NSLocalNetworkUsageDescription: "用于发现并访问局域网内的 SMB / WebDAV 影音服务器"
         NSBonjourServices:
           - "_smb._tcp"

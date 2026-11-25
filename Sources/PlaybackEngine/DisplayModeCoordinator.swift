@@ -1,21 +1,49 @@
 import Foundation
-import AVFoundation
+import AVKit
+import UIKit
 import CoreMedia
 
-/// 帧率匹配：计算视频轨刷新率，供 tvOS 的显示匹配（AVDisplayManager）消费。
-/// 注：tvOS SDK 的 AVPlayerItem 没有 preferredDisplayCriteria 属性，
-/// 该能力由 AVDisplayManager 提供（需 windowScene），因此这里只做纯计算，不引用不存在的 API。
-public enum DisplayModeCoordinator {
-    public static func refreshRate(for track: AVAssetTrack) async -> Float {
-        guard let frameDuration = try? await track.load(.minFrameDuration),
-              frameDuration.isValid,
-              frameDuration.seconds > 0 else { return 0 }
-        return Float((1.0 / frameDuration.seconds).rounded())
+/// 驱动 tvOS `AVDisplayManager`：按片源真实帧率/动态范围匹配电视刷新率（23.976/24/50/60 Hz），退出播放后还原默认。
+@MainActor
+public final class DisplayModeCoordinator {
+    public static let shared = DisplayModeCoordinator()
+
+    private init() {}
+
+    private func resolveManager() -> AVDisplayManager? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        for scene in scenes {
+            if let manager = scene.windows.first?.avDisplayManager {
+                return manager
+            }
+        }
+        return nil
     }
 
-    /// 24 / 25 / 30 / 50 / 60 的最近档位（用于给用户显示"已匹配 24Hz"）。
-    public static func nominalRate(_ raw: Float) -> Float {
-        let candidates: [Float] = [23.976, 24, 25, 29.97, 30, 50, 59.94, 60]
-        return candidates.min(by: { abs($0 - raw) < abs($1 - raw) }) ?? raw
+    public func apply(refreshRate: Float, formatDescription: CMFormatDescription? = nil, width: Int32 = 3840, height: Int32 = 2160, isHEVC: Bool = true) {
+        guard let manager = resolveManager() else { return }
+        let rate: Float = refreshRate > 1 ? refreshRate : 60
+        if let formatDescription {
+            manager.preferredDisplayCriteria = AVDisplayCriteria(refreshRate: rate, formatDescription: formatDescription)
+            return
+        }
+        // FSPlayer 路径下构造有效视频格式描述以触发 Match Frame Rate（不强改 SDR/HDR，以免误切）
+        var desc: CMVideoFormatDescription?
+        let codec: CMVideoCodecType = isHEVC ? kCMVideoCodecType_HEVC : kCMVideoCodecType_H264
+        CMVideoFormatDescriptionCreate(
+            allocator: kCFAllocatorDefault,
+            codecType: codec,
+            width: max(320, width),
+            height: max(240, height),
+            extensions: nil,
+            formatDescriptionOut: &desc
+        )
+        if let desc {
+            manager.preferredDisplayCriteria = AVDisplayCriteria(refreshRate: rate, formatDescription: desc)
+        }
+    }
+
+    public func reset() {
+        resolveManager()?.preferredDisplayCriteria = nil
     }
 }

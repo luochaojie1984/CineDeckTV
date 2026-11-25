@@ -1,40 +1,114 @@
 import SwiftUI
 
-/// 内容卡片焦点样式：微抬高光描边 + 环境投影，保持轻量（网格内几十上百张卡不能上玻璃材质）。
+/// 10-foot 聚焦卡片样式：真正读取 `@Environment(\.isFocused)`，聚焦时微放大（1.045）、高光描边、环境投影并播放轻系统音。
 public struct TVCardButtonStyle: ButtonStyle {
-    public init() {}
+    public var cornerRadius: CGFloat
+    public var fillColor: Color
+    public var focusedScale: CGFloat
+
+    public init(
+        cornerRadius: CGFloat = TVTokens.Radius.card,
+        fillColor: Color = TVTokens.Color.cardSurface,
+        focusedScale: CGFloat = 1.045
+    ) {
+        self.cornerRadius = cornerRadius
+        self.fillColor = fillColor
+        self.focusedScale = focusedScale
+    }
 
     public func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.985 : 1.0)
-            .animation(TVTokens.Motion.focus, value: configuration.isPressed)
+        FocusCardInner(
+            configuration: configuration,
+            cornerRadius: cornerRadius,
+            fillColor: fillColor,
+            focusedScale: focusedScale
+        )
+    }
+
+    private struct FocusCardInner: View {
+        let configuration: Configuration
+        let cornerRadius: CGFloat
+        let fillColor: Color
+        let focusedScale: CGFloat
+        @Environment(\.isFocused) private var isFocused
+
+        var body: some View {
+            configuration.label
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(isFocused ? Color.white.opacity(0.14) : fillColor)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            isFocused
+                                ? LinearGradient(
+                                    colors: [Color.white.opacity(0.95), TVTokens.Color.accent.opacity(0.85)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                                : LinearGradient(
+                                    colors: [Color.white.opacity(0.14), Color.white.opacity(0.06)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                            lineWidth: isFocused ? 3 : 1
+                        )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .shadow(
+                    color: isFocused ? TVTokens.Color.accent.opacity(0.32) : Color.black.opacity(0.35),
+                    radius: isFocused ? 22 : 8,
+                    x: 0,
+                    y: isFocused ? 12 : 4
+                )
+                .scaleEffect(configuration.isPressed ? 0.985 : (isFocused ? focusedScale : 1.0))
+                .animation(TVTokens.Motion.focus, value: isFocused)
+                .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+                .onChange(of: isFocused) { _, nowFocused in
+                    if nowFocused { UISoundPlayer.focusMove() }
+                }
+                .onChange(of: configuration.isPressed) { _, pressed in
+                    if pressed { UISoundPlayer.select() }
+                }
+        }
     }
 }
 
-public struct TVFocusableCard<Content: View>: View {
-    @FocusState private var focused: Bool
-    @ViewBuilder let content: () -> Content
+/// 10-foot 列表行聚焦样式。
+public struct TVListRowButtonStyle: ButtonStyle {
+    public init() {}
 
-    public init(@ViewBuilder content: @escaping () -> Content) {
-        self.content = content
+    public func makeBody(configuration: Configuration) -> some View {
+        FocusRowInner(configuration: configuration)
     }
 
-    public var body: some View {
-        content()
-            .padding(TVTokens.Spacing.cardInner)
-            .background(
-                RoundedRectangle(cornerRadius: TVTokens.Radius.card, style: .continuous)
-                    .fill(TVTokens.Color.cardSurface)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: TVTokens.Radius.card, style: .continuous)
-                    .strokeBorder(focused ? Color.white.opacity(0.85) : Color.white.opacity(0.08),
-                                  lineWidth: focused ? 2 : 1)
-            )
-            .shadow(color: .black.opacity(focused ? 0.55 : 0.2), radius: focused ? 22 : 8, y: focused ? 12 : 4)
-            .scaleEffect(focused ? 1.04 : 1.0)
-            .animation(TVTokens.Motion.focus, value: focused)
-            .focusable()
-            .focused($focused)
+    private struct FocusRowInner: View {
+        let configuration: Configuration
+        @Environment(\.isFocused) private var isFocused
+
+        var body: some View {
+            configuration.label
+                .background(
+                    RoundedRectangle(cornerRadius: TVTokens.Radius.card, style: .continuous)
+                        .fill(isFocused ? Color.white.opacity(0.15) : Color.white.opacity(0.05))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: TVTokens.Radius.card, style: .continuous)
+                        .strokeBorder(
+                            isFocused ? TVTokens.Color.accent.opacity(0.9) : Color.white.opacity(0.10),
+                            lineWidth: isFocused ? 2.5 : 1
+                        )
+                )
+                .shadow(color: isFocused ? TVTokens.Color.accent.opacity(0.25) : .clear, radius: 14, y: 6)
+                .scaleEffect(configuration.isPressed ? 0.99 : (isFocused ? 1.02 : 1.0))
+                .animation(TVTokens.Motion.focus, value: isFocused)
+                .onChange(of: isFocused) { _, nowFocused in
+                    if nowFocused { UISoundPlayer.focusMove() }
+                }
+                .onChange(of: configuration.isPressed) { _, pressed in
+                    if pressed { UISoundPlayer.select() }
+                }
+        }
     }
 }

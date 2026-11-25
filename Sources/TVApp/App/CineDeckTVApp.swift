@@ -8,6 +8,7 @@ struct CineDeckTVApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(environment)
+                .preferredColorScheme(.dark)
         }
     }
 }

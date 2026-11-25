@@ -1,9 +1,8 @@
 import Foundation
 import UIKit
 
-/// Siri Remote 底层捕获：区分短按（跳秒）、长按（连续加速）、Menu 与播放暂停。
-/// HUD 或抽屉弹出时必须把 isCaptureEnabled 置 false，并把 allowsHitTesting 关掉，
-/// 否则会把焦点从 SwiftUI 控件上抢走（设计规划 6.4 #19）。
+/// Siri Remote 底层捕获：区分短按（跳秒）、长按（连续加速）、触控板左右划动、Menu、上键呼出面板与播放暂停。
+/// HUD 或抽屉弹出时必须把 isCaptureEnabled 置 false 并关闭 allowsHitTesting，绝不抢 SwiftUI 控件焦点。
 @MainActor
 public final class RemoteKeyCaptureView: UIView {
     public var isCaptureEnabled = true { didSet { if !isCaptureEnabled { resetPress() } } }
@@ -11,26 +10,54 @@ public final class RemoteKeyCaptureView: UIView {
     public var onShortPress: ((_ forward: Bool) -> Void)?
     public var onLongPressBegan: ((_ forward: Bool) -> Void)?
     public var onLongPressEnded: (() -> Void)?
+    public var onTouchpadPanBegan: (() -> Void)?
+    public var onTouchpadPanChanged: ((_ deltaSeconds: Double) -> Void)?
+    public var onTouchpadPanEnded: (() -> Void)?
     public var onMenu: (() -> Void)?
     public var onPlayPause: (() -> Void)?
     public var onSelect: (() -> Void)?
+    public var onShowHUD: (() -> Void)?
 
     public var longPressDelay: TimeInterval = 0.18
 
     private var pressedDirection: Bool?
-    private var pressStartedAt: CFTimeInterval = 0
     private var didTriggerLongPress = false
     private var longPressWorkItem: DispatchWorkItem?
+    private var panAccumulatedDelta: Double = 0
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
         isUserInteractionEnabled = true
         backgroundColor = .clear
+
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleTouchpadPan(_:)))
+        pan.allowedTouchTypes = [NSNumber(value: UITouch.TouchType.indirect.rawValue)]
+        addGestureRecognizer(pan)
     }
 
     public required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     public override var canBecomeFocused: Bool { true }
+
+    @objc private func handleTouchpadPan(_ recognizer: UIPanGestureRecognizer) {
+        guard isCaptureEnabled else { return }
+        let translationX = recognizer.translation(in: self).x
+        switch recognizer.state {
+        case .began:
+            panAccumulatedDelta = 0
+            onTouchpadPanBegan?()
+        case .changed:
+            // 将触控板横向位移平滑映射为进度秒数（~120pt ≈ 30s）
+            let deltaSec = Double(translationX) * 0.25
+            panAccumulatedDelta = deltaSec
+            onTouchpadPanChanged?(deltaSec)
+        case .ended, .cancelled, .failed:
+            panAccumulatedDelta = 0
+            onTouchpadPanEnded?()
+        default:
+            break
+        }
+    }
 
     public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         guard isCaptureEnabled else {
@@ -41,6 +68,8 @@ public final class RemoteKeyCaptureView: UIView {
             switch press.type {
             case .leftArrow, .rightArrow:
                 beginPress(forward: press.type == .rightArrow)
+            case .upArrow, .downArrow:
+                onShowHUD?()
             case .select:
                 onSelect?()
             case .playPause:
@@ -70,7 +99,6 @@ public final class RemoteKeyCaptureView: UIView {
 
     private func beginPress(forward: Bool) {
         pressedDirection = forward
-        pressStartedAt = CACurrentMediaTime()
         didTriggerLongPress = false
         let work = DispatchWorkItem { [weak self] in
             guard let self, self.pressedDirection != nil else { return }

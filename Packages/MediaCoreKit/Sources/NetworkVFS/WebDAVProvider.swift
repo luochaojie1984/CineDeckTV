@@ -157,8 +157,27 @@ public actor WebDAVProvider: VFSProvider {
         applyAuth(&request)
         let (_, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw VFSError.transport("无 HTTP 响应") }
+        if http.statusCode == 404 { throw VFSError.notFound(path) }
         if http.statusCode == 401 { throw VFSError.authenticationFailed(path) }
-        if let value = http.value(forHTTPHeaderField: "Content-Length"), let size = Int64(value) {
+        if http.statusCode != 405,
+           let value = http.value(forHTTPHeaderField: "Content-Length"),
+           let size = Int64(value), size > 0 {
+            return size
+        }
+        var rangeReq = URLRequest(url: url)
+        rangeReq.httpMethod = "GET"
+        rangeReq.setValue("bytes=0-0", forHTTPHeaderField: "Range")
+        applyAuth(&rangeReq)
+        let (_, rangeResp) = try await session.data(for: rangeReq)
+        guard let rangeHTTP = rangeResp as? HTTPURLResponse else {
+            throw VFSError.transport("无 HTTP 响应")
+        }
+        if let contentRange = rangeHTTP.value(forHTTPHeaderField: "Content-Range"),
+           let slash = contentRange.lastIndex(of: "/"),
+           let total = Int64(contentRange[contentRange.index(after: slash)...].trimmingCharacters(in: .whitespaces)) {
+            return total
+        }
+        if let value = rangeHTTP.value(forHTTPHeaderField: "Content-Length"), let size = Int64(value) {
             return size
         }
         throw VFSError.transport("服务器未返回 Content-Length")
@@ -228,7 +247,7 @@ final class WebDAVMultiStatusParser: NSObject {
         entries = []
         let parser = XMLParser(data: data)
         parser.delegate = self
-        parser.parse()
+        _ = parser.parse()
         return entries
     }
 

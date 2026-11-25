@@ -1,4 +1,5 @@
 import Foundation
+import SubtitleKit
 
 public struct AppSettings: Codable, Sendable, Equatable {
     public enum DecodePreference: String, Codable, Sendable, CaseIterable {
@@ -25,6 +26,13 @@ public struct AppSettings: Codable, Sendable, Equatable {
 
     public enum ScalingPreference: String, Codable, Sendable, CaseIterable {
         case aspectFit, aspectFill, fill
+        public var displayName: String {
+            switch self {
+            case .aspectFit: return "等比适配"
+            case .aspectFill: return "等比裁切"
+            case .fill: return "铺满拉伸"
+            }
+        }
     }
 
     public var decodePreference: DecodePreference
@@ -37,6 +45,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var preferSimplifiedChineseSubtitle: Bool
     public var externalSubtitleDirectories: [String]
     public var rememberLastDirectory: Bool
+    public var subtitleStyle: SubtitleStyleConfig
+    public var lastVisitedPaths: [String: String]
 
     public enum ScrubMode: String, Codable, Sendable, CaseIterable {
         case fine, standard, turbo
@@ -80,7 +90,9 @@ public struct AppSettings: Codable, Sendable, Equatable {
         autoPlayNextEpisode: Bool = true,
         preferSimplifiedChineseSubtitle: Bool = true,
         externalSubtitleDirectories: [String] = ["Subs", "Subtitles", "Subtitle", "字幕"],
-        rememberLastDirectory: Bool = true
+        rememberLastDirectory: Bool = true,
+        subtitleStyle: SubtitleStyleConfig = SubtitleStyleConfig(),
+        lastVisitedPaths: [String: String] = [:]
     ) {
         self.decodePreference = decodePreference
         self.enginePreference = enginePreference
@@ -92,6 +104,24 @@ public struct AppSettings: Codable, Sendable, Equatable {
         self.preferSimplifiedChineseSubtitle = preferSimplifiedChineseSubtitle
         self.externalSubtitleDirectories = externalSubtitleDirectories
         self.rememberLastDirectory = rememberLastDirectory
+        self.subtitleStyle = subtitleStyle
+        self.lastVisitedPaths = lastVisitedPaths
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        decodePreference = try c.decodeIfPresent(DecodePreference.self, forKey: .decodePreference) ?? .automatic
+        enginePreference = try c.decodeIfPresent(EnginePreference.self, forKey: .enginePreference) ?? .automatic
+        scalingPreference = try c.decodeIfPresent(ScalingPreference.self, forKey: .scalingPreference) ?? .aspectFit
+        playbackRate = try c.decodeIfPresent(Double.self, forKey: .playbackRate) ?? 1.0
+        scrubMode = try c.decodeIfPresent(ScrubMode.self, forKey: .scrubMode) ?? .standard
+        cacheMegabytes = try c.decodeIfPresent(Int.self, forKey: .cacheMegabytes) ?? 96
+        autoPlayNextEpisode = try c.decodeIfPresent(Bool.self, forKey: .autoPlayNextEpisode) ?? true
+        preferSimplifiedChineseSubtitle = try c.decodeIfPresent(Bool.self, forKey: .preferSimplifiedChineseSubtitle) ?? true
+        externalSubtitleDirectories = try c.decodeIfPresent([String].self, forKey: .externalSubtitleDirectories) ?? ["Subs", "Subtitles", "Subtitle", "字幕"]
+        rememberLastDirectory = try c.decodeIfPresent(Bool.self, forKey: .rememberLastDirectory) ?? true
+        subtitleStyle = try c.decodeIfPresent(SubtitleStyleConfig.self, forKey: .subtitleStyle) ?? SubtitleStyleConfig()
+        lastVisitedPaths = try c.decodeIfPresent([String: String].self, forKey: .lastVisitedPaths) ?? [:]
     }
 
     /// 缓存硬上限：文档要求 <= 192 MB，默认 96 MB。

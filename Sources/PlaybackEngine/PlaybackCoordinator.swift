@@ -1,8 +1,8 @@
 import Foundation
 import UIKit
+import SubtitleKit
 
-/// 引擎路由：默认 FSPlayer 优先，加载失败（无 codec / 打开失败 / 解码致命错误）
-/// 自动回退 AVPlayer；也支持用户在抽屉里手动锁定内核。
+/// 引擎路由：默认 FSPlayer 优先；无论初始化失败还是运行时硬解/codec 失败，在 `.automatic` 模式下自动无感切换 AVPlayer。
 @MainActor
 public final class PlaybackCoordinator: ObservableObject {
     public enum EngineKind: String, Sendable {
@@ -16,39 +16,55 @@ public final class PlaybackCoordinator: ObservableObject {
         }
     }
 
-    @Published public private(set) var activeEngine: EngineKind = .automatic
-    @Published public private(set) var lastError: String?
-    @Published public private(set) var isPlaying = false
-
     public let fsEngine = FSPlayerEngineAdapter()
     public let avEngine = AVPlayerEngineAdapter()
 
+    @Published public private(set) var activeEngine: EngineKind = .fsplayer
+    @Published public private(set) var isPlaying = false
+    @Published public private(set) var isBuffering = false
+    @Published public private(set) var statusText = "准备中"
+    @Published public private(set) var currentTime: TimeInterval = 0
+    @Published public private(set) var duration: TimeInterval = 0
+    @Published public private(set) var layerRevision = 0
+    @Published public private(set) var lastError: String?
+    @Published public private(set) var fallbackNotice: String?
+    @Published public private(set) var audioTracks: [MediaTrackItem] = []
+    @Published public private(set) var embeddedSubtitleTracks: [MediaTrackItem] = []
+    @Published public private(set) var isHardwareDecode = true
+    @Published public private(set) var techStats = PlaybackTechStats()
+
+    public var onPlaybackFinished: (() -> Void)?
+
     private var current: (any PlayerEngine)?
-    private var currentURL: String?
-    private var currentStartAt: TimeInterval = 0
+    private var currentURL: String = ""
     private var currentOptions = EngineLoadOptions()
+    private var activePreference: EngineKind = .automatic
+    private var didFallbackForCurrentItem = false
 
     public init() {
-        fsEngine.onFinish = { [weak self] in self?.handleFinish() }
-        avEngine.onFinish = { [weak self] in self?.handleFinish() }
+        wireCallbacks()
     }
 
     public var engine: (any PlayerEngine)? { current }
-    public var currentTime: TimeInterval { current?.currentTime ?? 0 }
-    public var duration: TimeInterval { current?.duration ?? 0 }
 
-    /// 载入并起播；preference 决定是否允许回退。
     public func load(url: String, startAt: TimeInterval, options: EngineLoadOptions, preference: EngineKind = .automatic) {
         currentURL = url
-        currentStartAt = startAt
         currentOptions = options
+        activePreference = preference
+        didFallbackForCurrentItem = false
         lastError = nil
+        fallbackNotice = nil
+        audioTracks = []
+        embeddedSubtitleTracks = []
+        currentTime = max(0, startAt)
+        duration = 0
+        isHardwareDecode = options.hardwareDecode
 
         switch preference {
-        case .avplayer:
-            startAV(url: url, startAt: startAt, options: options)
         case .fsplayer:
             startFS(url: url, startAt: startAt, options: options, allowFallback: false)
+        case .avplayer:
+            startAV(url: url, startAt: startAt, options: options)
         case .automatic:
             startFS(url: url, startAt: startAt, options: options, allowFallback: true)
         }
@@ -66,48 +82,194 @@ public final class PlaybackCoordinator: ObservableObject {
 
     public func seek(to time: TimeInterval, accurate: Bool = false) {
         current?.seek(to: time, accurate: accurate)
+        currentTime = max(0, time)
+    }
+
+    public func seekToKeyframePreview(at time: TimeInterval) async {
+        if activeEngine == .fsplayer {
+            await fsEngine.seekToKeyframePreview(at: time)
+        } else {
+            avEngine.seek(to: time, accurate: false)
+        }
+        currentTime = current?.currentTime ?? time
+    }
+
+    public func stepToNextFrame() {
+        if activeEngine == .fsplayer {
+            fsEngine.stepToNextFrame()
+            currentTime = fsEngine.currentTime
+        }
+    }
+
+    public func setPlaybackRate(_ rate: Double) {
+        currentOptions.playbackRate = rate
+        if activeEngine == .fsplayer { fsEngine.setPlaybackRate(rate) }
+        else { avEngine.setPlaybackRate(rate) }
+    }
+
+    public func setScalingMode(_ scaling: ScalingMode) {
+        currentOptions.scaling = scaling
+        if activeEngine == .fsplayer { fsEngine.setScalingMode(scaling) }
+        else { avEngine.setScalingMode(scaling) }
+    }
+
+    public func setMuted(_ muted: Bool) {
+        if activeEngine == .fsplayer { fsEngine.setMuted(muted) }
+        else { avEngine.setMuted(muted) }
+    }
+
+    public func selectAudioTrack(_ trackID: Int32) {
+        if activeEngine == .fsplayer {
+            fsEngine.selectStream(index: trackID)
+        } else {
+            Task { await avEngine.selectAudioOption(index: trackID) }
+        }
+    }
+
+    public func selectSubtitleTrack(_ trackID: Int32) {
+        if activeEngine == .fsplayer {
+            fsEngine.selectStream(index: trackID)
+        }
+    }
+
+    public func disableEmbeddedSubtitle() {
+        if activeEngine == .fsplayer {
+            fsEngine.closeSubtitleStream()
+        }
+    }
+
+    @discardableResult
+    public func loadExternalSubtitle(localFileURL: URL) -> Bool {
+        guard activeEngine == .fsplayer else { return false }
+        return fsEngine.loadExternalSubtitle(localFileURL: localFileURL)
+    }
+
+    public func applySubtitleStyle(_ style: SubtitleStyleConfig) {
+        if activeEngine == .fsplayer {
+            fsEngine.applySubtitleStyle(style)
+        }
+    }
+
+    @discardableResult
+    public func switchDecoder(hardware: Bool) -> Bool {
+        guard activeEngine == .fsplayer else { return false }
+        let ok = fsEngine.switchDecoder(hardware: hardware)
+        if ok {
+            isHardwareDecode = hardware
+            currentOptions.hardwareDecode = hardware
+            refreshTechStats()
+        }
+        return ok
+    }
+
+    public func refreshTechStats() {
+        if activeEngine == .fsplayer {
+            techStats = fsEngine.captureTechStats()
+        } else {
+            techStats = avEngine.captureTechStats()
+        }
     }
 
     public func shutdown() {
-        current?.shutdown()
+        fsEngine.shutdown()
+        avEngine.shutdown()
         current = nil
         isPlaying = false
+        isBuffering = false
+        DisplayModeCoordinator.shared.reset()
     }
 
-    /// 硬解/软解热切换（仅 FSPlayer 生效）。
-    @discardableResult
-    public func switchDecoder(hardware: Bool) -> Bool {
-        fsEngine.switchDecoder(hardware: hardware)
+    // MARK: - 内部路由
+
+    private func wireCallbacks() {
+        fsEngine.onStateChange = { [weak self] text in
+            guard let self, self.activeEngine == .fsplayer else { return }
+            self.statusText = text
+            self.isPlaying = self.fsEngine.isPlaying
+            self.isBuffering = self.fsEngine.isBuffering
+        }
+        fsEngine.onTimeUpdate = { [weak self] pos, dur in
+            guard let self, self.activeEngine == .fsplayer else { return }
+            self.currentTime = pos
+            if dur > 0 { self.duration = dur }
+            self.isPlaying = self.fsEngine.isPlaying
+        }
+        fsEngine.onTracksChanged = { [weak self] audio, subs in
+            guard let self, self.activeEngine == .fsplayer else { return }
+            self.audioTracks = audio
+            self.embeddedSubtitleTracks = subs
+        }
+        fsEngine.onFirstFrameRendered = { [weak self] in
+            self?.refreshTechStats()
+        }
+        fsEngine.onFinish = { [weak self] in
+            self?.onPlaybackFinished?()
+        }
+        fsEngine.onError = { [weak self] message in
+            guard let self else { return }
+            if self.activePreference == .automatic && !self.didFallbackForCurrentItem && !self.currentURL.isEmpty {
+                self.didFallbackForCurrentItem = true
+                self.fallbackNotice = "FSPlayer 解码异常，已自动切换到系统 AVPlayer"
+                let resumeAt = max(0, self.currentTime)
+                self.fsEngine.shutdown()
+                self.startAV(url: self.currentURL, startAt: resumeAt, options: self.currentOptions)
+            } else {
+                self.lastError = message
+            }
+        }
+
+        avEngine.onStateChange = { [weak self] text in
+            guard let self, self.activeEngine == .avplayer else { return }
+            self.statusText = text
+            self.isPlaying = self.avEngine.isPlaying
+            self.isBuffering = self.avEngine.isBuffering
+        }
+        avEngine.onTimeUpdate = { [weak self] pos, dur in
+            guard let self, self.activeEngine == .avplayer else { return }
+            self.currentTime = pos
+            if dur > 0 { self.duration = dur }
+        }
+        avEngine.onTracksChanged = { [weak self] audio, subs in
+            guard let self, self.activeEngine == .avplayer else { return }
+            self.audioTracks = audio
+            if !subs.isEmpty { self.embeddedSubtitleTracks = subs }
+        }
+        avEngine.onFinish = { [weak self] in
+            self?.onPlaybackFinished?()
+        }
+        avEngine.onError = { [weak self] msg in
+            self?.lastError = msg
+        }
     }
 
     private func startFS(url: String, startAt: TimeInterval, options: EngineLoadOptions, allowFallback: Bool) {
+        avEngine.shutdown()
         do {
             try fsEngine.load(url: url, startAt: startAt, options: options)
             current = fsEngine
             activeEngine = .fsplayer
             isPlaying = true
+            layerRevision = fsEngine.layerRevision
         } catch {
             lastError = error.localizedDescription
-            if allowFallback {
+            if allowFallback && !didFallbackForCurrentItem {
+                didFallbackForCurrentItem = true
+                fallbackNotice = "FSPlayer 初始化失败，已回退至 AVPlayer"
                 startAV(url: url, startAt: startAt, options: options)
             }
         }
     }
 
     private func startAV(url: String, startAt: TimeInterval, options: EngineLoadOptions) {
+        fsEngine.shutdown()
         do {
             try avEngine.load(url: url, startAt: startAt, options: options)
             current = avEngine
             activeEngine = .avplayer
             isPlaying = true
+            layerRevision = avEngine.layerRevision + 1000
         } catch {
             lastError = error.localizedDescription
-            current = nil
-            isPlaying = false
         }
-    }
-
-    private func handleFinish() {
-        isPlaying = false
     }
 }

@@ -1,10 +1,9 @@
 import Foundation
 import CoreGraphics
 
-/// 统一播放引擎接口：FSPlayer（主）与 AVPlayer（兜底）都实现它，可按需热切换。
+/// 统一播放引擎接口：FSPlayer（主）与 AVPlayer（兜底）均实现它，支持无感知自动回退与手动热切换。
 @MainActor
 public protocol PlayerEngine: AnyObject {
-    /// 每次重建底层播放器后自增，UI 层据此重新挂载渲染视图（防止切集/切内核黑屏）。
     var layerRevision: Int { get }
     var isPlaying: Bool { get }
     var currentTime: TimeInterval { get }
@@ -15,6 +14,46 @@ public protocol PlayerEngine: AnyObject {
     func pause()
     func seek(to time: TimeInterval, accurate: Bool)
     func shutdown()
+}
+
+public struct MediaTrackItem: Identifiable, Hashable, Sendable {
+    public let id: Int32
+    public let title: String
+    public let language: String
+    public let codecName: String
+    public let isSelected: Bool
+
+    public init(id: Int32, title: String, language: String, codecName: String, isSelected: Bool = false) {
+        self.id = id
+        self.title = title
+        self.language = language
+        self.codecName = codecName
+        self.isSelected = isSelected
+    }
+
+    public var displayName: String {
+        var parts: [String] = []
+        if !title.isEmpty { parts.append(title) }
+        if !language.isEmpty && !title.localizedCaseInsensitiveContains(language) { parts.append(language.uppercased()) }
+        if !codecName.isEmpty { parts.append("[\(codecName.uppercased())]") }
+        return parts.isEmpty ? "轨道 #\(id)" : parts.joined(separator: " · ")
+    }
+}
+
+public struct PlaybackTechStats: Sendable, Equatable {
+    public var engineName: String = "—"
+    public var videoCodec: String = "—"
+    public var audioCodec: String = "—"
+    public var resolution: String = "—"
+    public var fps: Double = 0
+    public var outputFPS: Double = 0
+    public var bitrateMbps: Double = 0
+    public var droppedFrames: Int32 = 0
+    public var downloadSpeedMBps: Double = 0
+    public var isHardwareDecode: Bool = true
+    public var bufferingProgress: Int = 0
+
+    public init() {}
 }
 
 public struct EngineLoadOptions: Sendable {
@@ -36,9 +75,9 @@ public enum ScalingMode: String, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .aspectFit: return "适应"
-        case .aspectFill: return "铺满"
-        case .fill: return "拉伸"
+        case .aspectFit: return "等比适配"
+        case .aspectFill: return "等比裁切"
+        case .fill: return "铺满拉伸"
         }
     }
 }

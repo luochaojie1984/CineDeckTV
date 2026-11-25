@@ -1,4 +1,4 @@
-name: CineDeckTV CI (Ubuntu Tests + tvOS Unsigned IPA)
+name: CineDeckTV CI (Ubuntu Tests + tvOS Unsigned IPA + Simulator Previews)
 
 on:
   push:
@@ -33,10 +33,12 @@ jobs:
         run: |
           xcodebuild -version
           xcodebuild -showsdks | grep -i appletvos || true
-      - name: Install XcodeGen
-        run: brew install xcodegen
-      - name: Generate Xcode project
-        run: xcodegen generate
+      - name: Fetch & patch AMSMB2 Vendor
+        run: bash scripts/prepare_amsmb2.sh --patch-project-yml
+      - name: Install XcodeGen & Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
       - name: Build tvOS Release (unsigned)
         run: |
           xcodebuild clean build \
@@ -49,20 +51,17 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_IDENTITY="" \
             SYMROOT="$(pwd)/build"
-      - name: Verify embedded FSPlayer.framework and Info.plist keys
+      - name: Verify embedded frameworks and Info.plist keys
         run: |
           set -euo pipefail
           APP="build/Release-appletvos/CineDeckTV.app"
           test -d "$APP" || { echo "::error::app bundle missing"; exit 1; }
           test -d "$APP/Frameworks/FSPlayer.framework" || { echo "::error::FSPlayer.framework not embedded"; exit 1; }
           test -d "$APP/Frameworks/AMSMB2.framework" || { ls "$APP/Frameworks"; echo "::error::AMSMB2.framework not embedded"; exit 1; }
-          /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$APP/Info.plist" || { echo "::error::NSLocalNetworkUsageDescription missing"; exit 1; }
-          /usr/libexec/PlistBuddy -c "Print :NSBonjourServices" "$APP/Info.plist" || { echo "::error::NSBonjourServices missing"; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :NSBonjourServices" "$APP/Info.plist"
           /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist"
-          echo "--- Frameworks ---"
           ls -la "$APP/Frameworks"
-          echo "--- FSPlayer slice ---"
-          ls "$APP/Frameworks/FSPlayer.framework" | head
       - name: Package unsigned IPA
         run: |
           rm -rf Payload CineDeckTV-Unsigned.ipa
@@ -79,4 +78,53 @@ jobs:
           path: |
             CineDeckTV-Unsigned.ipa
             CineDeckTV-Unsigned.ipa.sha256
+          retention-days: 30
+
+  preview-tvos-screenshots:
+    name: tvOS 27 Simulator Multi-Screen Screenshots
+    needs: core-tests-ubuntu
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[preview]')
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch & patch AMSMB2 Vendor
+        run: bash scripts/prepare_amsmb2.sh --patch-project-yml
+      - name: Install XcodeGen & Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build Debug app for tvOS Simulator
+        run: |
+          xcodebuild clean build \
+            -project CineDeckTV.xcodeproj \
+            -scheme CineDeckTV \
+            -sdk appletvsimulator \
+            -destination 'generic/platform=tvOS Simulator' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            SYMROOT="$(pwd)/sim-build"
+      - name: Boot tvOS Simulator and capture 6 screen previews
+        run: |
+          set -euo pipefail
+          UDID=$(python3 -c 'import json,subprocess; d=json.loads(subprocess.check_output(["xcrun","simctl","list","devices","available","-j"])); ts=[devs for k,devs in sorted(d.get("devices",{}).items(),reverse=True) if "tvOS" in k and devs]; print(next((x["udid"] for x in ts[0] if "Apple TV 4K" in x.get("name","")), ts[0][0]["udid"]))')
+          echo "Using tvOS Simulator UDID: $UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          APP="sim-build/Debug-appletvsimulator/CineDeckTV.app"
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p screenshots
+          for screen in home browser-grid browser-list sources player-hud settings; do
+            xcrun simctl terminate "$UDID" local.personal.cinedecktv || true
+            SIMCTL_CHILD_CINEDECK_PREVIEW_SCREEN="$screen" xcrun simctl launch "$UDID" local.personal.cinedecktv "--preview-screen=$screen"
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "screenshots/${screen}.png"
+            ls -lh "screenshots/${screen}.png"
+            test -s "screenshots/${screen}.png"
+          done
+      - name: Upload tvOS 27 Simulator screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: CineDeckTV-tvOS27-UI-Previews
+          path: screenshots/*.png
           retention-days: 30
