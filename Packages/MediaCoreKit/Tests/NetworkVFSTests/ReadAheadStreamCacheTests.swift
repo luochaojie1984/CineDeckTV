@@ -5,8 +5,7 @@ import Foundation
 /// 内存数据源：记录读取次数，用于验证缓存命中与头尾钉住。
 final class MemorySource: @unchecked Sendable, StreamChunkSource {
     private let data: Data
-    private let lock = NSLock()
-    private(set) var readCount = 0
+    nonisolated(unsafe) private(set) var readCount = 0
 
     init(size: Int) {
         var bytes = [UInt8](repeating: 0, count: size)
@@ -17,7 +16,7 @@ final class MemorySource: @unchecked Sendable, StreamChunkSource {
     func contentLength() async throws -> Int64 { Int64(data.count) }
 
     func read(offset: Int64, length: Int) async throws -> Data {
-        lock.lock(); readCount += 1; lock.unlock()
+        readCount += 1
         let start = Int(offset)
         let end = min(data.count, start + length)
         guard start < end else { return Data() }
