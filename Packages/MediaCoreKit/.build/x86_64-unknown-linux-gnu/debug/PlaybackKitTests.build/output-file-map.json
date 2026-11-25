@@ -1,0 +1,11 @@
+{
+  "": {
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/PlaybackKitTests.build/master.swiftdeps"
+  },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/Tests/PlaybackKitTests/ScrubMathTests.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/PlaybackKitTests.build/ScrubMathTests.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/PlaybackKitTests.build/ScrubMathTests.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/PlaybackKitTests.build/ScrubMathTests~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/PlaybackKitTests.build/ScrubMathTests.swiftdeps"
+  }
+}

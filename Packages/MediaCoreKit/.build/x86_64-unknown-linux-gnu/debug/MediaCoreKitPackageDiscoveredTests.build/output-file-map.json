@@ -20,6 +20,12 @@
     "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/NetworkVFSTests~partial.swiftmodule",
     "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/NetworkVFSTests.swiftdeps"
   },
+  "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/PlaybackKitTests.swift": {
+    "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/PlaybackKitTests.d",
+    "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/PlaybackKitTests.swift.o",
+    "swiftmodule": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/PlaybackKitTests~partial.swiftmodule",
+    "swift-dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/PlaybackKitTests.swiftdeps"
+  },
   "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.derived/SubtitleKitTests.swift": {
     "dependencies": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/SubtitleKitTests.d",
     "object": "/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/SubtitleKitTests.swift.o",

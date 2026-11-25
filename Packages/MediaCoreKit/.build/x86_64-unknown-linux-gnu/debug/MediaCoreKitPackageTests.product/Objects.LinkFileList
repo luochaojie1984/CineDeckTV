@@ -16,6 +16,7 @@
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/LocalStreamProxyTests.swift.o
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/MediaCoreKitPackageDiscoveredTests.swiftmodule.o
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/NetworkVFSTests.swift.o
+/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/PlaybackKitTests.swift.o
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/SubtitleKitTests.swift.o
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageDiscoveredTests.build/all-discovered-tests.swift.o
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/MediaCoreKitPackageTests.build/MediaCoreKitPackageTests.swiftmodule.o
@@ -29,6 +30,10 @@
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/NetworkVFSTests.swiftmodule.o
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/ReadAheadStreamCacheTests.swift.o
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/NetworkVFSTests.build/WebDAVProviderTests.swift.o
+/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/PlaybackKit.build/PlaybackKit.swiftmodule.o
+/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/PlaybackKit.build/ScrubMath.swift.o
+/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/PlaybackKitTests.build/PlaybackKitTests.swiftmodule.o
+/data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/PlaybackKitTests.build/ScrubMathTests.swift.o
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleEncodingDetector.swift.o
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleKit.swiftmodule.o
 /data/projects/CineDeckTV/Packages/MediaCoreKit/.build/x86_64-unknown-linux-gnu/debug/SubtitleKit.build/SubtitleMatcher.swift.o
