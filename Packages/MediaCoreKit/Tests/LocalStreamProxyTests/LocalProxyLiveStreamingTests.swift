@@ -149,4 +149,24 @@ struct LocalProxyLiveStreamingTests {
 
         await proxy.stop()
     }
+
+    @Test("Route.urlPath 保留扩展名且正确返回 MIME (mp4)")
+    func routeURLPreservesExtension() async throws {
+        let totalSize: Int64 = 128 * 1024
+        let cache = ReadAheadStreamCache(source: PatternChunkSource(totalBytes: totalSize))
+        let proxy = LocalHTTPStreamProxy(cache: cache)
+        try await proxy.start(preferredPort: 0)
+        let route = await proxy.register(fileExtension: "mp4")
+        #expect(route.urlPath.hasSuffix(".mp4"))
+        let url = await proxy.localURL(for: route)!
+        #expect(url.pathExtension == "mp4")
+        var req = URLRequest(url: url)
+        req.setValue("bytes=0-1023", forHTTPHeaderField: "Range")
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        let http = resp as? HTTPURLResponse
+        #expect(http?.statusCode == 206)
+        #expect(http?.value(forHTTPHeaderField: "Content-Type") == "video/mp4")
+        #expect(data.count == 1024)
+        await proxy.stop()
+    }
 }

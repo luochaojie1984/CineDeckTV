@@ -21,6 +21,16 @@ struct RootView: View {
     @State private var pendingBonjourKind: MediaSourceKind = .smb
     @State private var didApplyPreviewScenario = false
 
+    private var ambientPalette: CinemaAmbientPalette {
+        switch selectedTab {
+        case .home: return .home
+        case .browser: return .browser
+        case .history: return .history
+        case .sources: return .sources
+        case .settings: return .settings
+        }
+    }
+
     private var shouldInterceptRootMenuBack: Bool {
         guard playingTarget == nil, !isSourcesModalOpen else { return false }
         switch selectedTab {
@@ -36,7 +46,7 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            TVTokens.backgroundGradient.ignoresSafeArea()
+            CinemaAmbientBackdrop(palette: ambientPalette)
 
             TabView(selection: $selectedTab) {
                 HomeSpotlightView(

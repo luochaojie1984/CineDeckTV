@@ -46,9 +46,12 @@ targets:
       path: Sources/TVApp/Info.plist
       properties:
         CFBundleDisplayName: CineDeckTV
-        CFBundleShortVersionString: "0.2.1"
-        CFBundleVersion: "3"
+        CFBundleShortVersionString: "0.3.0"
+        CFBundleVersion: "4"
         NSLocalNetworkUsageDescription: "用于发现并访问局域网内的 SMB / WebDAV 影音服务器"
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
         NSBonjourServices:
           - "_smb._tcp"
           - "_webdav._tcp"

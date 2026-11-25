@@ -1,20 +1,23 @@
 import SwiftUI
 import UIKit
 
-/// 10-foot 聚焦卡片样式：读取 `@Environment(\.isFocused)`，配完整 `contentShape` 确保 tvOS Focus Engine 精准命中每一张卡片。
+/// 10-foot 液态玻璃聚焦卡片样式：tvOS 26+ 原生 `.glassEffect(.regular.tint().interactive())` + 镜面光泽边框 + 柔和弹性悬停。
 public struct TVCardButtonStyle: ButtonStyle {
     public var cornerRadius: CGFloat
     public var fillColor: Color
     public var focusedScale: CGFloat
+    public var accentTint: Color
 
     public init(
         cornerRadius: CGFloat = TVTokens.Radius.card,
         fillColor: Color = TVTokens.Color.cardSurface,
-        focusedScale: CGFloat = 1.045
+        focusedScale: CGFloat = 1.032,
+        accentTint: Color = TVTokens.Color.accent
     ) {
         self.cornerRadius = cornerRadius
         self.fillColor = fillColor
         self.focusedScale = focusedScale
+        self.accentTint = accentTint
     }
 
     public func makeBody(configuration: Configuration) -> some View {
@@ -22,7 +25,8 @@ public struct TVCardButtonStyle: ButtonStyle {
             configuration: configuration,
             cornerRadius: cornerRadius,
             fillColor: fillColor,
-            focusedScale: focusedScale
+            focusedScale: focusedScale,
+            accentTint: accentTint
         )
     }
 
@@ -31,40 +35,46 @@ public struct TVCardButtonStyle: ButtonStyle {
         let cornerRadius: CGFloat
         let fillColor: Color
         let focusedScale: CGFloat
+        let accentTint: Color
         @Environment(\.isFocused) private var isFocused
 
         var body: some View {
-            configuration.label
-                .contentShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                .background(
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(isFocused ? Color.white.opacity(0.16) : fillColor)
-                )
+            let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            cardSurface(shape: shape)
                 .overlay(
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    shape
                         .strokeBorder(
                             isFocused
                                 ? LinearGradient(
-                                    colors: [Color.white.opacity(0.98), TVTokens.Color.accent.opacity(0.9)],
+                                    colors: [
+                                        Color.white.opacity(0.96),
+                                        accentTint.opacity(0.92),
+                                        TVTokens.Color.violet.opacity(0.75)
+                                    ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                                 : LinearGradient(
-                                    colors: [Color.white.opacity(0.14), Color.white.opacity(0.06)],
+                                    colors: [
+                                        Color.white.opacity(0.24),
+                                        Color.white.opacity(0.06),
+                                        accentTint.opacity(0.14)
+                                    ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
-                            lineWidth: isFocused ? 3.5 : 1
+                            lineWidth: isFocused ? 2.8 : 1.0
                         )
                 )
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .clipShape(shape)
                 .shadow(
-                    color: isFocused ? TVTokens.Color.accent.opacity(0.35) : Color.black.opacity(0.35),
-                    radius: isFocused ? 22 : 8,
+                    color: isFocused ? accentTint.opacity(0.36) : Color.black.opacity(0.32),
+                    radius: isFocused ? 18 : 10,
                     x: 0,
-                    y: isFocused ? 12 : 4
+                    y: isFocused ? 10 : 5
                 )
                 .scaleEffect(configuration.isPressed ? 0.985 : (isFocused ? focusedScale : 1.0))
+                .offset(y: isFocused ? -3 : 0)
                 .animation(TVTokens.Motion.focus, value: isFocused)
                 .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
                 .onChange(of: isFocused) { _, nowFocused in
@@ -74,37 +84,91 @@ public struct TVCardButtonStyle: ButtonStyle {
                     if pressed { UISoundPlayer.select() }
                 }
         }
+
+        @ViewBuilder
+        private func cardSurface(shape: RoundedRectangle) -> some View {
+            if #available(tvOS 26.0, *) {
+                configuration.label
+                    .contentShape(shape)
+                    .background(
+                        shape
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        isFocused ? Color.white.opacity(0.12) : fillColor,
+                                        accentTint.opacity(isFocused ? 0.14 : 0.04)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    )
+                    .glassEffect(
+                        .regular.tint(accentTint.opacity(isFocused ? 0.22 : 0.05)).interactive(),
+                        in: .rect(cornerRadius: cornerRadius)
+                    )
+                    .overlay(
+                        LinearGradient(
+                            colors: [Color.white.opacity(isFocused ? 0.18 : 0.05), .clear],
+                            startPoint: .topLeading,
+                            endPoint: .center
+                        )
+                        .allowsHitTesting(false)
+                    )
+            } else {
+                configuration.label
+                    .contentShape(shape)
+                    .background(
+                        ZStack {
+                            shape.fill(.ultraThinMaterial)
+                            shape.fill(isFocused ? accentTint.opacity(0.18) : fillColor)
+                        }
+                    )
+            }
+        }
     }
 }
 
-/// 10-foot 列表行聚焦样式。
+/// 10-foot 液态玻璃列表行聚焦样式。
 public struct TVListRowButtonStyle: ButtonStyle {
-    public init() {}
+    public var accentTint: Color
+
+    public init(accentTint: Color = TVTokens.Color.accent) {
+        self.accentTint = accentTint
+    }
 
     public func makeBody(configuration: Configuration) -> some View {
-        FocusRowInner(configuration: configuration)
+        FocusRowInner(configuration: configuration, accentTint: accentTint)
     }
 
     private struct FocusRowInner: View {
         let configuration: Configuration
+        let accentTint: Color
         @Environment(\.isFocused) private var isFocused
 
         var body: some View {
-            configuration.label
-                .contentShape(RoundedRectangle(cornerRadius: TVTokens.Radius.card, style: .continuous))
-                .background(
-                    RoundedRectangle(cornerRadius: TVTokens.Radius.card, style: .continuous)
-                        .fill(isFocused ? Color.white.opacity(0.16) : Color.white.opacity(0.05))
-                )
+            let shape = RoundedRectangle(cornerRadius: TVTokens.Radius.card, style: .continuous)
+            rowSurface(shape: shape)
                 .overlay(
-                    RoundedRectangle(cornerRadius: TVTokens.Radius.card, style: .continuous)
+                    shape
                         .strokeBorder(
-                            isFocused ? TVTokens.Color.accent.opacity(0.95) : Color.white.opacity(0.10),
-                            lineWidth: isFocused ? 3 : 1
+                            isFocused
+                                ? LinearGradient(
+                                    colors: [Color.white.opacity(0.92), accentTint.opacity(0.95)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                                : LinearGradient(
+                                    colors: [Color.white.opacity(0.20), Color.white.opacity(0.06)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                            lineWidth: isFocused ? 2.5 : 1.0
                         )
                 )
-                .shadow(color: isFocused ? TVTokens.Color.accent.opacity(0.28) : .clear, radius: 14, y: 6)
-                .scaleEffect(configuration.isPressed ? 0.99 : (isFocused ? 1.02 : 1.0))
+                .clipShape(shape)
+                .shadow(color: isFocused ? accentTint.opacity(0.28) : Color.black.opacity(0.22), radius: isFocused ? 14 : 6, y: isFocused ? 8 : 3)
+                .scaleEffect(configuration.isPressed ? 0.99 : (isFocused ? 1.015 : 1.0))
                 .animation(TVTokens.Motion.focus, value: isFocused)
                 .onChange(of: isFocused) { _, nowFocused in
                     if nowFocused { UISoundPlayer.focusMove() }
@@ -112,6 +176,28 @@ public struct TVListRowButtonStyle: ButtonStyle {
                 .onChange(of: configuration.isPressed) { _, pressed in
                     if pressed { UISoundPlayer.select() }
                 }
+        }
+
+        @ViewBuilder
+        private func rowSurface(shape: RoundedRectangle) -> some View {
+            if #available(tvOS 26.0, *) {
+                configuration.label
+                    .contentShape(shape)
+                    .background(shape.fill(isFocused ? accentTint.opacity(0.12) : Color.white.opacity(0.045)))
+                    .glassEffect(
+                        .regular.tint(accentTint.opacity(isFocused ? 0.20 : 0.04)).interactive(),
+                        in: .rect(cornerRadius: TVTokens.Radius.card)
+                    )
+            } else {
+                configuration.label
+                    .contentShape(shape)
+                    .background(
+                        ZStack {
+                            shape.fill(.ultraThinMaterial)
+                            shape.fill(isFocused ? accentTint.opacity(0.16) : Color.white.opacity(0.05))
+                        }
+                    )
+            }
         }
     }
 }

@@ -77,16 +77,23 @@ public struct PlayerScreenView: View {
                     .ignoresSafeArea()
             }
 
-            if coordinator.activeEngine == .avplayer && !overlayCues.isEmpty {
-                SubtitleOverlayView(cues: overlayCues, currentTime: coordinator.currentTime, style: subtitleStyle)
+            if coordinator.activeEngine == .avplayer && !overlayCues.isEmpty && activeDrawer == nil {
+                var effectiveStyle = subtitleStyle
+                if showHUD {
+                    effectiveStyle.bottomInset = max(subtitleStyle.bottomInset, 270)
+                }
+                SubtitleOverlayView(cues: overlayCues, currentTime: coordinator.currentTime, style: effectiveStyle)
             }
 
             if previewOpenHUD {
+                var previewSubStyle = subtitleStyle
+                previewSubStyle.bottomInset = 310
                 SubtitleOverlayView(
                     cues: [SubtitleCue(start: 0, end: 99999, text: "不要温顺地走进那个良夜 —— 外挂 ASS / GB18030 自动转码就绪")],
                     currentTime: 100,
-                    style: subtitleStyle
+                    style: previewSubStyle
                 )
+                .padding(.trailing, activeDrawer != nil ? 700 : 0)
             }
 
             RemoteCaptureRepresentable(
@@ -140,8 +147,8 @@ public struct PlayerScreenView: View {
                         Spacer()
                     }
                     .padding(.leading, 48)
-                    .padding(.trailing, activeDrawer != nil ? 730 : 48)
-                    .padding(.top, 36)
+                    .padding(.trailing, activeDrawer != nil ? 690 : 48)
+                    .padding(.top, 34)
                     Spacer()
                 }
             }
@@ -152,11 +159,13 @@ public struct PlayerScreenView: View {
 
             if !showHUD && !previewOpenHUD && (scrub.isShowingBar || isFastPlaying) {
                 compactBottomScrubBar
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                     .allowsHitTesting(false)
             }
 
             if showHUD || previewOpenHUD {
                 floatingTransportHUD
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
             if let drawer = activeDrawer {
@@ -219,6 +228,7 @@ public struct PlayerScreenView: View {
                 }
                 .padding(.trailing, 40)
                 .padding(.vertical, 36)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
             }
 
             if let countdown = nextEpisodeCountdown, let next = nextEpisodeEntry {
@@ -785,8 +795,9 @@ public struct PlayerScreenView: View {
                         Capsule()
                             .fill(Color.white.opacity(0.22))
                         Capsule()
-                            .fill(barColor)
+                            .fill(LinearGradient(colors: [barColor, barColor.opacity(0.65)], startPoint: .leading, endPoint: .trailing))
                             .frame(width: fillWidth)
+                            .shadow(color: barColor.opacity(0.55), radius: 5)
                         RoundedRectangle(cornerRadius: 1.5, style: .continuous)
                             .fill(Color.white)
                             .frame(width: 3, height: 11)
@@ -827,23 +838,24 @@ public struct PlayerScreenView: View {
             Spacer()
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(activeEntry.name)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(TVTitleFormatter.cleanDisplayTitle(activeEntry.name))
                             .font(TVTokens.Typography.directoryTitle)
                             .lineLimit(1)
-                        VideoBadgeRow(activeEntry.badges)
+                        VideoBadgeRow(activeEntry.badges, maxCount: 4)
                     }
-                    Spacer()
+                    Spacer(minLength: 16)
                     Text(previewOpenHUD ? "01:08:40 / 02:49:00" : "\(formatTime(coordinator.currentTime)) / \(formatTime(coordinator.duration))")
-                        .font(.system(size: 26, weight: .bold, design: .monospaced))
+                        .font(.system(size: 24, weight: .bold, design: .monospaced))
                         .foregroundStyle(TVTokens.Color.secondaryText)
                 }
 
-                ProgressView(
-                    value: previewOpenHUD ? 4120 : coordinator.currentTime,
-                    total: previewOpenHUD ? 10140 : max(1, coordinator.duration)
+                TVProgressBar(
+                    progress: previewOpenHUD ? (4120.0 / 10140.0) : (coordinator.currentTime / max(1, coordinator.duration)),
+                    tint: TVTokens.Color.accent,
+                    secondaryTint: TVTokens.Color.violet,
+                    height: 8
                 )
-                .tint(TVTokens.Color.accent)
 
                 AdaptiveGlassContainer(spacing: 10) {
                     HStack(spacing: 10) {
@@ -911,8 +923,8 @@ public struct PlayerScreenView: View {
             .padding(28)
             .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false)
             .padding(.leading, 48)
-            .padding(.trailing, activeDrawer != nil ? 730 : 48)
-            .padding(.bottom, 34)
+            .padding(.trailing, activeDrawer != nil ? 710 : 48)
+            .padding(.bottom, 36)
         }
     }
 
@@ -1044,6 +1056,19 @@ public struct PlayerScreenView: View {
 
 private final class PlaybackSurfaceUIView: UIView {
     var mountedRevision: Int = -1
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        for sub in subviews {
+            sub.frame = bounds
+        }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for sublayer in layer.sublayers ?? [] {
+            sublayer.frame = bounds
+        }
+        CATransaction.commit()
+    }
 }
 
 private struct PlaybackContainerView: UIViewRepresentable {

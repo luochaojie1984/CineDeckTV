@@ -25,6 +25,8 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
     private var seekPreviewContinuation: CheckedContinuation<Void, Never>?
     private var seekPreviewTimeoutTask: Task<Void, Never>?
     private var pendingResumeSeekTime: TimeInterval?
+    private var pendingSubtitleStyle: SubtitleStyleConfig?
+    private var lastAppliedSubtitleDelay: Float = 0
     private var didReportTerminalFinish = false
 
     public init() {}
@@ -46,8 +48,11 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         fsOptions.automaticallySetupAudioSession = true
         fsOptions.currentPlaybackTimeNotificationInterval = 0.25
         fsOptions.setPlayerOptionIntValue(options.hardwareDecode ? 1 : 0, forKey: "videotoolbox_hwaccel")
-        fsOptions.setPlayerOptionIntValue(1, forKey: "copy_hw_frame")
-        fsOptions.setPlayerOptionIntValue(1, forKey: "subtitle")
+        // 关键修复：tvOS 上必须保持 copy_hw_frame = 0（零拷贝 CVPixelBuffer）；设为 1 会触发 av_hwframe_map 失败并破坏视频帧！
+        fsOptions.setPlayerOptionIntValue(0, forKey: "copy_hw_frame")
+        fsOptions.setPlayerOptionIntValue(0, forKey: "sn")
+        fsOptions.setPlayerOptionIntValue(1, forKey: "subtitle_mix")
+        fsOptions.setPlayerOptionIntValue(60, forKey: "max-fps")
         fsOptions.setPlayerOptionIntValue(1, forKey: "packet-buffering")
         fsOptions.setPlayerOptionIntValue(1, forKey: "framedrop")
         fsOptions.setPlayerOptionIntValue(1, forKey: "start-on-prepared")
@@ -60,12 +65,14 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         fsOptions.setFormatOptionIntValue(15_000_000, forKey: "timeout")
         fsOptions.setFormatOptionValue("fastseek", forKey: "fflags")
         fsOptions.setFormatOptionIntValue(1, forKey: "reconnect")
-        fsOptions.setFormatOptionValue("1", forKey: "http_persistent")
+        // LocalHTTPStreamProxy 每条请求返回 Connection: close，禁止复用已关闭短连接
+        fsOptions.setFormatOptionValue("0", forKey: "http_persistent")
 
         // Open cleanly from t=0 and seek right after prepared to avoid seek-at-start resume hangs.
         self.pendingResumeSeekTime = startAt > 0.5 ? startAt : nil
 
         let metalView = FSVideoRenderView.createMetalRenderView()
+        metalView.frame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
         let fsPlayer = FSPlayer(content: url, options: fsOptions, videoRendering: metalView)
         fsPlayer.shouldAutoplay = true
         fsPlayer.playbackRate = Float(options.playbackRate)
@@ -147,7 +154,10 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
     }
 
     public func applySubtitleStyle(_ style: SubtitleStyleConfig) {
-        guard let player else { return }
+        pendingSubtitleStyle = style
+        // 关键修复：ijkmp_set_subtitle_extra_delay 在 prepared 之前直接解引用 ffp->is->play_mutex 会立即 SIGSEGV！
+        // 必须缓存并在 .FSPlayerIsPreparedToPlay 之后才写入 FSPlayer。
+        guard let player, isPrepared else { return }
         var pref = fs_subtitle_default_preference()
         pref.ForceOverride = 1
         pref.Scale = Float(min(2.5, max(0.5, style.fontSize / 34.0)))
@@ -156,7 +166,11 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         pref.PrimaryColour = assColor(fromHex: style.foregroundHex, defaultColor: 0xFFFFFF00)
         pref.OutlineColour = assColor(fromHex: style.outlineHex, defaultColor: 0x00000000)
         player.subtitlePreference = pref
-        player.currentSubtitleExtraDelay = Float(style.offsetSeconds)
+        let delay = Float(style.offsetSeconds)
+        if abs(delay - lastAppliedSubtitleDelay) > 0.001 {
+            player.currentSubtitleExtraDelay = delay
+            lastAppliedSubtitleDelay = delay
+        }
     }
 
     public func trackLists() -> (audio: [MediaTrackItem], subtitles: [MediaTrackItem]) {
@@ -221,6 +235,8 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         }
         observerTokens.removeAll()
         pendingResumeSeekTime = nil
+        pendingSubtitleStyle = nil
+        lastAppliedSubtitleDelay = 0
         player?.shutdownSync(false)
         player = nil
         renderView?.removeFromSuperview()
@@ -239,6 +255,9 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
                 guard let self, let player = self.player, player === fsPlayer else { return }
                 self.isPrepared = true
                 self.isBuffering = false
+                if let pendingStyle = self.pendingSubtitleStyle {
+                    self.applySubtitleStyle(pendingStyle)
+                }
                 if let resumeAt = self.pendingResumeSeekTime {
                     self.pendingResumeSeekTime = nil
                     let dur = self.duration
@@ -254,13 +273,15 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
                 let w = mon.width > 0 ? mon.width : Int32(player.naturalSize.width)
                 let h = mon.height > 0 ? mon.height : Int32(player.naturalSize.height)
                 let codecLower = (mon.vcodec ?? "").lowercased()
-                DisplayModeCoordinator.shared.apply(
-                    refreshRate: fps,
-                    formatDescription: nil,
-                    width: w,
-                    height: h,
-                    isHEVC: codecLower.contains("hevc") || codecLower.contains("265")
-                )
+                if fps > 1, w > 0, h > 0 {
+                    DisplayModeCoordinator.shared.apply(
+                        refreshRate: fps,
+                        formatDescription: nil,
+                        width: w,
+                        height: h,
+                        isHEVC: codecLower.contains("hevc") || codecLower.contains("265")
+                    )
+                }
                 self.onStateChange?("正在播放")
             }
         })

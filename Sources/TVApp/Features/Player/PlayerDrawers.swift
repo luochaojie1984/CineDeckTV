@@ -28,10 +28,16 @@ public struct PlayerSideDrawer: View {
     public var onClose: () -> Void
 
     public var body: some View {
+        let accent = kind == .subtitles ? TVTokens.Color.accent : TVTokens.Color.violet
         VStack(alignment: .leading, spacing: 18) {
-            HStack {
-                Label(kind == .subtitles ? "字幕与样式" : "音轨与解码控制",
-                      systemImage: kind == .subtitles ? "captions.bubble.fill" : "waveform.and.magnifyingglass")
+            HStack(spacing: 14) {
+                Image(systemName: kind == .subtitles ? "captions.bubble.fill" : "waveform.and.magnifyingglass")
+                    .font(.system(size: 24, weight: .semibold))
+                    .frame(width: 48, height: 48)
+                    .background(accent.opacity(0.24), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .foregroundStyle(accent)
+
+                Text(kind == .subtitles ? "字幕与样式" : "音轨与解码控制")
                     .font(TVTokens.Typography.sectionTitle)
                     .lineLimit(1)
                 Spacer()
@@ -45,18 +51,22 @@ public struct PlayerSideDrawer: View {
             ScrollView {
                 if kind == .subtitles {
                     subtitlesBody
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
                         .focusSection()
                 } else {
                     audioAndDecodeBody
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
                         .focusSection()
                 }
             }
             .focusSection()
         }
         .padding(28)
-        .frame(width: 660)
+        .frame(width: TVTokens.Size.drawerWidth)
         .frame(maxHeight: 980)
-        .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false)
+        .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false, tint: accent.opacity(0.08))
     }
 
     @ViewBuilder
@@ -65,13 +75,14 @@ public struct PlayerSideDrawer: View {
             Button(action: onDisableSubtitle) {
                 HStack {
                     Image(systemName: activeExternalPath == nil && activeEmbeddedSubID == nil ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(activeExternalPath == nil && activeEmbeddedSubID == nil ? TVTokens.Color.accent : TVTokens.Color.secondaryText)
                     Text("关闭所有字幕")
                     Spacer()
                 }
                 .font(TVTokens.Typography.button)
                 .padding(14)
             }
-            .buttonStyle(TVListRowButtonStyle())
+            .buttonStyle(TVListRowButtonStyle(accentTint: TVTokens.Color.accent))
 
             if !externalSubtitles.isEmpty {
                 Text("外挂字幕（自动转码 UTF-8 / libass）")
@@ -91,7 +102,7 @@ public struct PlayerSideDrawer: View {
                         }
                         .padding(14)
                     }
-                    .buttonStyle(TVListRowButtonStyle())
+                    .buttonStyle(TVListRowButtonStyle(accentTint: TVTokens.Color.accent))
                 }
             }
 
@@ -113,7 +124,7 @@ public struct PlayerSideDrawer: View {
                         }
                         .padding(14)
                     }
-                    .buttonStyle(TVListRowButtonStyle())
+                    .buttonStyle(TVListRowButtonStyle(accentTint: TVTokens.Color.accent))
                 }
             }
 
@@ -123,7 +134,7 @@ public struct PlayerSideDrawer: View {
                 Text("同步偏移：\(String(format: "%+.1fs", style.offsetSeconds))")
                     .font(TVTokens.Typography.secondary)
                     .foregroundStyle(TVTokens.Color.secondaryText)
-                HStack(spacing: 12) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
                     drawerPill("-0.5s") { style.offsetSeconds -= 0.5 }
                     drawerPill("归零", prominent: abs(style.offsetSeconds) < 0.05) { style.offsetSeconds = 0 }
                     drawerPill("+0.5s") { style.offsetSeconds += 0.5 }
@@ -134,7 +145,7 @@ public struct PlayerSideDrawer: View {
                 Text("字号大小")
                     .font(TVTokens.Typography.secondary)
                     .foregroundStyle(TVTokens.Color.secondaryText)
-                HStack(spacing: 12) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4), spacing: 12) {
                     ForEach([28.0, 34.0, 42.0, 50.0], id: \.self) { size in
                         drawerPill("\(Int(size))pt", prominent: abs(style.fontSize - size) < 1) {
                             style.fontSize = size
@@ -147,12 +158,12 @@ public struct PlayerSideDrawer: View {
                 Text("字幕配色与底距")
                     .font(TVTokens.Typography.secondary)
                     .foregroundStyle(TVTokens.Color.secondaryText)
-                HStack(spacing: 12) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
                     drawerPill("纯白", prominent: style.foregroundHex == "#FFFFFF") { style.foregroundHex = "#FFFFFF" }
-                    drawerPill("暖黄", prominent: style.foregroundHex == "#FFD859") { style.foregroundHex = "#FFD859" }
-                    drawerPill("冰蓝", prominent: style.foregroundHex == "#7AD7FF") { style.foregroundHex = "#7AD7FF" }
+                    drawerPill("暖黄", prominent: style.foregroundHex == "#FFD859", tint: TVTokens.Color.amber) { style.foregroundHex = "#FFD859" }
+                    drawerPill("冰蓝", prominent: style.foregroundHex == "#7AD7FF", tint: TVTokens.Color.accent) { style.foregroundHex = "#7AD7FF" }
                 }
-                HStack(spacing: 12) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
                     drawerPill("贴底", prominent: style.bottomInset <= 40) { style.bottomInset = 32 }
                     drawerPill("标准", prominent: style.bottomInset > 40 && style.bottomInset <= 80) { style.bottomInset = 56 }
                     drawerPill("抬高", prominent: style.bottomInset > 80) { style.bottomInset = 96 }
@@ -187,7 +198,7 @@ public struct PlayerSideDrawer: View {
                         }
                         .padding(14)
                     }
-                    .buttonStyle(TVListRowButtonStyle())
+                    .buttonStyle(TVListRowButtonStyle(accentTint: TVTokens.Color.violet))
                 }
             }
 
@@ -197,13 +208,13 @@ public struct PlayerSideDrawer: View {
                 Text("VideoToolbox 解码与双引擎热切")
                     .font(TVTokens.Typography.secondary)
                     .foregroundStyle(TVTokens.Color.secondaryText)
-                HStack(spacing: 12) {
-                    drawerPill("硬件解码", prominent: coordinator.isHardwareDecode) { onToggleHardwareDecode(true) }
-                    drawerPill("软件解码", prominent: !coordinator.isHardwareDecode) { onToggleHardwareDecode(false) }
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
+                    drawerPill("硬件解码", prominent: coordinator.isHardwareDecode, tint: TVTokens.Color.emerald) { onToggleHardwareDecode(true) }
+                    drawerPill("软件解码", prominent: !coordinator.isHardwareDecode, tint: TVTokens.Color.amber) { onToggleHardwareDecode(false) }
                 }
-                HStack(spacing: 12) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
                     drawerPill("FSPlayer 主核", prominent: coordinator.activeEngine == .fsplayer) { onSwitchEngine(.fsplayer) }
-                    drawerPill("AVPlayer 杜比", prominent: coordinator.activeEngine == .avplayer) { onSwitchEngine(.avplayer) }
+                    drawerPill("AVPlayer 杜比", prominent: coordinator.activeEngine == .avplayer, tint: TVTokens.Color.violet) { onSwitchEngine(.avplayer) }
                 }
             }
 
@@ -213,12 +224,12 @@ public struct PlayerSideDrawer: View {
                 Text("播放倍速与画面比例")
                     .font(TVTokens.Typography.secondary)
                     .foregroundStyle(TVTokens.Color.secondaryText)
-                HStack(spacing: 10) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
                     ForEach([0.5, 1.0, 1.25, 1.5, 2.0, 3.0], id: \.self) { rate in
                         drawerPill("\(String(format: "%.2g", rate))x") { onChangeRate(rate) }
                     }
                 }
-                HStack(spacing: 12) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3), spacing: 12) {
                     ForEach(ScalingMode.allCases, id: \.self) { mode in
                         drawerPill(mode.displayName) { onChangeScaling(mode) }
                     }
@@ -230,47 +241,66 @@ public struct PlayerSideDrawer: View {
         }
     }
 
-    private func drawerPill(_ title: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
+    private func drawerPill(_ title: String, prominent: Bool = false, tint: Color = TVTokens.Color.accent, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 20, weight: .semibold))
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+            HStack(spacing: 6) {
+                if prominent {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16))
+                }
+                Text(title)
+                    .font(.system(size: 19, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
         }
         .tvAdaptiveGlassButtonStyle(prominent: prominent)
+        .tint(prominent ? tint : (nil as Color?))
     }
 }
 
-/// 清晰透明感（.clear）液态玻璃顶部实时技术参数浮岛。
+/// 清晰透明感（.clear）液态玻璃顶部实时技术参数浮岛：零截断完整展示音视频与局域网流吞吐指标。
 public struct TechStatsHUDPill: View {
     public let stats: PlaybackTechStats
 
     public var body: some View {
         HStack(spacing: 10) {
-            Label(stats.engineName, systemImage: "cpu")
-            Text("·")
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(stats.isHardwareDecode ? TVTokens.Color.emerald : TVTokens.Color.amber)
+                    .frame(width: 8, height: 8)
+                Text(stats.engineName)
+            }
+            dot
             Text(stats.isHardwareDecode ? "HW 硬解" : "SW 软解")
-                .foregroundStyle(stats.isHardwareDecode ? TVTokens.Color.accent : .yellow)
-            Text("·")
+                .foregroundStyle(stats.isHardwareDecode ? TVTokens.Color.accent : TVTokens.Color.amber)
+            dot
             Text("\(stats.videoCodec) \(stats.resolution)")
-            Text("·")
+            dot
             Text(String(format: "%.2f / %.2f fps", stats.fps, stats.outputFPS))
-            Text("·")
+            dot
             Text(String(format: "%.1f Mbps", stats.bitrateMbps))
             if stats.downloadSpeedMBps > 0.05 {
-                Text("·")
-                Text(String(format: "局域网 %.1f MB/s", stats.downloadSpeedMBps))
+                dot
+                Text(String(format: "%.1f MB/s", stats.downloadSpeedMBps))
+                    .foregroundStyle(TVTokens.Color.emerald)
             }
-            Text("·")
+            dot
             Text("丢帧 \(stats.droppedFrames)")
         }
-        .font(.system(size: 16, weight: .semibold, design: .monospaced))
+        .font(.system(size: 15, weight: .semibold, design: .monospaced))
         .lineLimit(1)
-        .minimumScaleFactor(0.75)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
+        .fixedSize(horizontal: true, vertical: false)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 11)
         .tvGlassSurface(cornerRadius: TVTokens.Radius.capsule, clear: true)
+    }
+
+    private var dot: some View {
+        Text("·")
+            .foregroundStyle(TVTokens.Color.tertiaryText)
     }
 }

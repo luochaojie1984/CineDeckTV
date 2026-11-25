@@ -74,7 +74,34 @@ struct ReadAheadStreamCacheTests {
         #expect(head.count == 1024)
         #expect(tail.count == 1024)
     }
+
+    @Test("底层返回非零 startIndex 的 Data 切片时读取与快进微缓存均不越界")
+    func handlesNonZeroStartIndexSlices() async throws {
+        struct SlicedChunkSource: StreamChunkSource {
+            let backing: Data = Data((0..<(4 * 1024 * 1024)).map { UInt8($0 % 251) })
+            func contentLength() async throws -> Int64 { Int64(backing.count) }
+            func read(offset: Int64, length: Int) async throws -> Data {
+                let start = Int(offset)
+                let end = min(backing.count, start + length)
+                guard start < end else { return Data() }
+                // 返回带非零 startIndex 的原始 slice！
+                return backing[start..<end]
+            }
+        }
+        let cache = ReadAheadStreamCache(source: SlicedChunkSource())
+        let a = try await cache.read(offset: 100, length: 512)
+        #expect(a.count == 512)
+        #expect(a[a.startIndex] == UInt8(100 % 251))
+
+        await cache.setScrubMode(true)
+        let b = try await cache.read(offset: 1_500_000, length: 1024)
+        let c = try await cache.read(offset: 1_500_512, length: 512)
+        #expect(b.count == 1024)
+        #expect(c.count == 512)
+        #expect(c[c.startIndex] == UInt8(1_500_512 % 251))
+    }
 }
+
 
 extension MemorySource {
     func readSync(offset: Int, length: Int) -> Data {

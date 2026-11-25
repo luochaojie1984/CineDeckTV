@@ -23,7 +23,8 @@ public extension VFSProvider {
             let header = try await read(path: path, offset: cursor, length: 16)
             guard header.count >= 8 else { return nil }
             let size32 = header.readBigEndianUInt32(at: 0)
-            let type = String(bytes: header[4..<8], encoding: .ascii) ?? ""
+            let base = header.startIndex
+            let type = String(bytes: header[(base + 4)..<(base + 8)], encoding: .ascii) ?? ""
             var atomSize = Int64(size32)
             var headerLen: Int64 = 8
             if size32 == 1, header.count >= 16 {

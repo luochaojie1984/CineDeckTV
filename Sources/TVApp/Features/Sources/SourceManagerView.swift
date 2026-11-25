@@ -1,7 +1,7 @@
 import SwiftUI
 import NetworkVFS
 
-/// 源管理器：单栏大屏服务器清单（每行 .focusSection() 保证遥控器上下左右直达全部按钮）+ 弹窗添加编辑与 20 MB 测速。
+/// 源管理器：2 栏液态玻璃服务器矩阵卡片（每卡内置焦点区操作坞，无孤立悬空按钮，支持 20 MB 测速与编辑）。
 public struct SourceManagerView: View {
     @EnvironmentObject private var env: AppEnvironment
     @Binding public var prefillHost: String?
@@ -27,10 +27,15 @@ public struct SourceManagerView: View {
 
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                HStack {
-                    Text("服务器与共享源")
-                        .font(TVTokens.Typography.pageTitle)
+            VStack(alignment: .leading, spacing: 26) {
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("服务器与共享源")
+                            .font(TVTokens.Typography.pageTitle)
+                        Text("直连局域网 SMB2/3 与 WebDAV · 常驻预读与 20 MB 真实吞吐测速")
+                            .font(TVTokens.Typography.secondary)
+                            .foregroundStyle(TVTokens.Color.secondaryText)
+                    }
                     Spacer()
                     AdaptiveGlassContainer(spacing: 14) {
                         Button {
@@ -39,7 +44,7 @@ public struct SourceManagerView: View {
                         } label: {
                             Label("添加 SMB / WebDAV", systemImage: "plus.circle.fill")
                                 .font(TVTokens.Typography.button)
-                                .padding(.horizontal, 24)
+                                .padding(.horizontal, 26)
                                 .padding(.vertical, 14)
                         }
                         .tvAdaptiveGlassButtonStyle(prominent: true)
@@ -51,7 +56,7 @@ public struct SourceManagerView: View {
                     VStack(spacing: 18) {
                         Image(systemName: "server.rack")
                             .font(.system(size: 56))
-                            .foregroundStyle(TVTokens.Color.accent)
+                            .foregroundStyle(TVTokens.Color.emerald)
                         Text("尚未配置任何局域网服务器")
                             .font(TVTokens.Typography.sectionTitle)
                         Text("点击右上角「添加 SMB / WebDAV」，支持 Windows / Synology / 威联通 / Alist 与 WebDAV。")
@@ -63,87 +68,21 @@ public struct SourceManagerView: View {
                     .tvGlassSurface(cornerRadius: TVTokens.Radius.panel)
                     .focusSection()
                 } else {
-                    LazyVStack(spacing: 16) {
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: 26), count: 2),
+                        spacing: 26
+                    ) {
                         ForEach(env.sources) { src in
-                            HStack(spacing: 16) {
-                                Button {
-                                    onOpenSource(src)
-                                } label: {
-                                    HStack(spacing: 18) {
-                                        Image(systemName: src.kind == .smb ? "externaldrive.fill.badge.wifi" : "globe")
-                                            .font(.system(size: 36, weight: .semibold))
-                                            .frame(width: 68, height: 68)
-                                            .background(TVTokens.Color.folderTint.opacity(0.24), in: RoundedRectangle(cornerRadius: TVTokens.Radius.iconBlock))
-                                            .foregroundStyle(TVTokens.Color.accent)
-
-                                        VStack(alignment: .leading, spacing: 6) {
-                                            Text(src.name)
-                                                .font(TVTokens.Typography.listPrimary)
-                                                .lineLimit(1)
-                                            HStack(spacing: 12) {
-                                                Text(src.kind.displayName)
-                                                Text("·")
-                                                Text("\(src.host):\(src.port)")
-                                                Text("·")
-                                                Text(src.sharePath.isEmpty ? "/" : src.sharePath)
-                                                if env.hasSavedPassword(for: src.id) && !src.enableAnonymous {
-                                                    Text("·")
-                                                    Text("已保存凭据").foregroundStyle(.green)
-                                                }
-                                            }
-                                            .font(TVTokens.Typography.secondary)
-                                            .foregroundStyle(TVTokens.Color.secondaryText)
-                                            .lineLimit(1)
-                                        }
-                                        Spacer()
-                                    }
-                                    .padding(20)
-                                }
-                                .buttonStyle(TVCardButtonStyle())
-
-                                AdaptiveGlassContainer(spacing: 12) {
-                                    HStack(spacing: 12) {
-                                        Button {
-                                            speedTestSource = src
-                                        } label: {
-                                            Label("测速", systemImage: "speedometer")
-                                                .font(TVTokens.Typography.button)
-                                                .lineLimit(1)
-                                                .padding(.horizontal, 18)
-                                                .padding(.vertical, 16)
-                                        }
-                                        .tvAdaptiveGlassButtonStyle()
-
-                                        Button {
-                                            editingConfig = src
-                                        } label: {
-                                            Label("编辑", systemImage: "pencil")
-                                                .font(TVTokens.Typography.button)
-                                                .lineLimit(1)
-                                                .padding(.horizontal, 18)
-                                                .padding(.vertical, 16)
-                                        }
-                                        .tvAdaptiveGlassButtonStyle()
-
-                                        Button(role: .destructive) {
-                                            env.remove(source: src)
-                                        } label: {
-                                            Image(systemName: "trash")
-                                                .font(.system(size: 22))
-                                                .padding(16)
-                                        }
-                                        .tvAdaptiveGlassButtonStyle()
-                                    }
-                                }
-                            }
-                            .focusSection()
+                            sourceCard(src)
                         }
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 10)
                     .focusSection()
                 }
             }
-            .padding(.horizontal, 48)
-            .padding(.vertical, 28)
+            .padding(.horizontal, TVTokens.Spacing.pageHorizontal)
+            .padding(.vertical, 32)
         }
         .onAppear { applyPrefillIfNeeded() }
         .onChange(of: prefillHost) { _, _ in applyPrefillIfNeeded() }
@@ -178,6 +117,127 @@ public struct SourceManagerView: View {
             LanSpeedTestSheet(source: src)
                 .environmentObject(env)
         }
+    }
+
+    private func sourceCard(_ src: MediaSourceConfig) -> some View {
+        let tint = src.kind == .smb ? TVTokens.Color.accent : TVTokens.Color.violet
+        let hasCred = env.hasSavedPassword(for: src.id) && !src.enableAnonymous
+
+        return VStack(alignment: .leading, spacing: 20) {
+            HStack(spacing: 16) {
+                Image(systemName: src.kind == .smb ? "externaldrive.fill.badge.wifi" : "globe")
+                    .font(.system(size: 30, weight: .semibold))
+                    .frame(width: 64, height: 64)
+                    .background(
+                        LinearGradient(colors: [tint.opacity(0.45), tint.opacity(0.16)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(tint.opacity(0.55), lineWidth: 1)
+                    )
+                    .foregroundStyle(.white)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(src.name)
+                        .font(TVTokens.Typography.sectionTitle)
+                        .lineLimit(1)
+                    HStack(spacing: 10) {
+                        Text(src.kind.displayName)
+                            .font(.system(size: 16, weight: .bold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 3)
+                            .background(tint.opacity(0.24), in: Capsule())
+                            .foregroundStyle(tint)
+
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(hasCred ? TVTokens.Color.emerald : TVTokens.Color.amber)
+                                .frame(width: 8, height: 8)
+                            Text(hasCred ? "已保存凭据" : (src.enableAnonymous ? "匿名访客" : "未存密码"))
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundStyle(TVTokens.Color.secondaryText)
+                        }
+                    }
+                }
+                Spacer()
+            }
+
+            HStack(spacing: 16) {
+                Label("\(src.host):\(src.port)", systemImage: "network")
+                    .lineLimit(1)
+                Text("·")
+                    .foregroundStyle(TVTokens.Color.tertiaryText)
+                Label(src.sharePath.isEmpty ? "/" : src.sharePath, systemImage: "folder")
+                    .lineLimit(1)
+                Spacer()
+            }
+            .font(.system(size: 19, weight: .medium, design: .monospaced))
+            .foregroundStyle(TVTokens.Color.secondaryText)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(.white.opacity(0.10), lineWidth: 1)
+            )
+
+            AdaptiveGlassContainer(spacing: 10) {
+                HStack(spacing: 10) {
+                    Button {
+                        onOpenSource(src)
+                    } label: {
+                        Label("进入片库", systemImage: "folder.fill")
+                            .font(.system(size: 19, weight: .semibold))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 11)
+                    }
+                    .tvAdaptiveGlassButtonStyle(prominent: true)
+
+                    Button {
+                        speedTestSource = src
+                    } label: {
+                        Label("测速", systemImage: "speedometer")
+                            .font(.system(size: 19, weight: .semibold))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 11)
+                    }
+                    .tvAdaptiveGlassButtonStyle()
+
+                    Button {
+                        editingConfig = src
+                    } label: {
+                        Label("编辑", systemImage: "pencil")
+                            .font(.system(size: 19, weight: .semibold))
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 11)
+                    }
+                    .tvAdaptiveGlassButtonStyle()
+
+                    Spacer(minLength: 4)
+
+                    Button(role: .destructive) {
+                        env.remove(source: src)
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 19, weight: .semibold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 11)
+                    }
+                    .tvAdaptiveGlassButtonStyle()
+                }
+            }
+            .focusSection()
+        }
+        .padding(26)
+        .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false, tint: tint.opacity(0.08))
+        .focusSection()
     }
 
     private func syncModalFlag() {
@@ -220,7 +280,9 @@ private struct SourceEditorSheet: View {
     }
 
     var body: some View {
-        ScrollView {
+        ZStack {
+            CinemaAmbientBackdrop(palette: .sources)
+            ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Text(existing == nil ? "添加共享服务器" : "编辑「\(existing?.name ?? "")」")
                     .font(TVTokens.Typography.pageTitle)
@@ -309,6 +371,9 @@ private struct SourceEditorSheet: View {
                 .padding(.top, 8)
             }
             .padding(44)
+            .tvGlassSurface(cornerRadius: TVTokens.Radius.panel)
+            .padding(36)
+        }
         }
         .onAppear {
             guard !didInit else { return }

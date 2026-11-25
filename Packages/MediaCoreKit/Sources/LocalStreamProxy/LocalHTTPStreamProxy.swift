@@ -15,7 +15,7 @@ public actor LocalHTTPStreamProxy {
     public struct Route: Sendable, Hashable {
         public let token: String
         public let path: String
-        public var urlPath: String { "/s/\(token)" }
+        public var urlPath: String { "/s/\(path)" }
     }
 
     public enum ProxyError: Error, LocalizedError, Sendable {

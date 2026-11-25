@@ -133,7 +133,8 @@ public actor ReadAheadStreamCache {
             let localStart = max(0, Int(offset - chunkStart))
             let localEnd = min(chunk.count, Int(offset + upper - chunkStart))
             if localEnd > localStart {
-                out.append(chunk[localStart..<localEnd])
+                let base = chunk.startIndex
+                out.append(chunk[(base + localStart)..<(base + localEnd)])
             }
         }
 
@@ -158,7 +159,8 @@ public actor ReadAheadStreamCache {
             let header = try await read(offset: cursor, length: 16)
             guard header.count >= 8 else { return nil }
             let size32 = header.readBigEndianUInt32(at: 0)
-            let type = String(bytes: header[4..<8], encoding: .ascii) ?? ""
+            let base = header.startIndex
+            let type = String(bytes: header[(base + 4)..<(base + 8)], encoding: .ascii) ?? ""
             var atomSize = Int64(size32)
             var headerLen: Int64 = 8
             if size32 == 1 {
@@ -222,7 +224,8 @@ public actor ReadAheadStreamCache {
            offset + Int64(length) <= scrubMicroStart + Int64(scrubMicroData.count) {
             statistics.hits += 1
             let localStart = Int(offset - scrubMicroStart)
-            return scrubMicroData[localStart..<(localStart + length)]
+            let base = scrubMicroData.startIndex
+            return Data(scrubMicroData[(base + localStart)..<(base + localStart + length)])
         }
 
         statistics.misses += 1
@@ -232,12 +235,13 @@ public actor ReadAheadStreamCache {
         )
         let data = try await source.read(offset: offset, length: fetchLen)
         statistics.bytesFetched += data.count
-        if data.count <= max(length, config.scrubBypassChunkSize) {
+        let owned = Data(data)
+        if owned.count <= max(length, config.scrubBypassChunkSize) {
             scrubMicroStart = offset
-            scrubMicroData = data
+            scrubMicroData = owned
         }
-        let sliceLen = min(length, data.count)
-        return data.prefix(sliceLen)
+        let sliceLen = min(length, owned.count)
+        return Data(owned.prefix(sliceLen))
     }
 
     private func obtainMainChunk(_ index: Int64) async throws -> Data {
@@ -265,7 +269,7 @@ public actor ReadAheadStreamCache {
         do {
             let data = try await task.value
             inFlightLoads.removeValue(forKey: index)
-            chunks[index] = data
+            chunks[index] = Data(data)
             touch(index)
             statistics.bytesFetched += data.count
             evictIfNeeded()

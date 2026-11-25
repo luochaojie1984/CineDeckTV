@@ -4,7 +4,7 @@ import AppPreferences
 
 /// 网盘风格共享浏览器：
 /// - 采用原生 `NavigationStack(path:)` 逐级入栈，遥控器按返回自动退回上一级目录，根目录按返回回到「首页」；
-/// - 顶部工具栏与内容区均配置 `.focusSection()`，上下左右方向键随时可在任意卡片与功能按钮间直达移动。
+/// - 海报级多色氛围网格卡片 + 浮动液态玻璃顶栏，彻底消除角标拥挤与边框裁切。
 public struct DriveBrowserView: View {
     @EnvironmentObject private var env: AppEnvironment
     @Binding public var selectedSource: MediaSourceConfig?
@@ -119,6 +119,10 @@ private struct DriveDirectoryPage: View {
         currentPath == "/" || currentPath.isEmpty
     }
 
+    private var pathSegments: [String] {
+        currentPath.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             toolbar
@@ -151,75 +155,21 @@ private struct DriveDirectoryPage: View {
                     .focusSection()
             }
         }
-        .padding(.horizontal, 48)
-        .padding(.vertical, 24)
+        .padding(.horizontal, TVTokens.Spacing.browserHorizontal)
+        .padding(.top, 22)
+        .padding(.bottom, 28)
         .task(id: "\(source?.id.uuidString ?? "none")::\(currentPath)") {
             await loadDirectory()
         }
     }
 
     private var toolbar: some View {
-        AdaptiveGlassContainer(spacing: 14) {
-            HStack(spacing: 14) {
-                if !isAtRoot {
-                    Button {
-                        if !navPath.isEmpty { navPath.removeLast() }
-                    } label: {
-                        Label("返回上级", systemImage: "chevron.left")
-                            .font(TVTokens.Typography.button)
-                            .lineLimit(1)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 12)
-                    }
-                    .tvAdaptiveGlassButtonStyle()
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(source?.name ?? "未连接片源")
-                        .font(TVTokens.Typography.directoryTitle)
-                        .lineLimit(1)
-                    Text(currentPath.isEmpty ? "/" : currentPath)
-                        .font(TVTokens.Typography.tertiary)
-                        .foregroundStyle(TVTokens.Color.secondaryText)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                if env.sources.count > 1, let current = source {
-                    Menu {
-                        ForEach(env.sources) { src in
-                            Button {
-                                selectedSource = src
-                            } label: {
-                                Label(src.name, systemImage: src.id == current.id ? "checkmark" : (src.kind == .smb ? "externaldrive.fill" : "globe"))
-                            }
-                        }
-                    } label: {
-                        Label("切换服务器", systemImage: "arrow.left.arrow.right")
-                            .font(TVTokens.Typography.button)
-                            .lineLimit(1)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 12)
-                    }
-                    .tvAdaptiveGlassButtonStyle()
-                }
-
+        HStack(spacing: 16) {
+            if !isAtRoot {
                 Button {
-                    storedIsGrid.toggle()
+                    if !navPath.isEmpty { navPath.removeLast() }
                 } label: {
-                    Label(effectiveIsGrid ? "列表视图" : "网格视图", systemImage: effectiveIsGrid ? "list.bullet" : "square.grid.2x2")
-                        .font(TVTokens.Typography.button)
-                        .lineLimit(1)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
-                }
-                .tvAdaptiveGlassButtonStyle()
-
-                Button {
-                    Task { await loadDirectory() }
-                } label: {
-                    Label("刷新", systemImage: "arrow.clockwise")
+                    Label("返回上级", systemImage: "chevron.left")
                         .font(TVTokens.Typography.button)
                         .lineLimit(1)
                         .padding(.horizontal, 18)
@@ -227,8 +177,106 @@ private struct DriveDirectoryPage: View {
                 }
                 .tvAdaptiveGlassButtonStyle()
             }
-            .frame(minHeight: TVTokens.Size.toolbarHeight)
+
+            HStack(spacing: 16) {
+                Image(systemName: (source?.kind ?? .smb) == .smb ? "externaldrive.fill.badge.wifi" : "globe")
+                    .font(.system(size: 26, weight: .semibold))
+                    .frame(width: 54, height: 54)
+                    .background(TVTokens.Color.accent.opacity(0.22), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .foregroundStyle(TVTokens.Color.accent)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 10) {
+                        Text(source?.name ?? "未连接片源")
+                            .font(TVTokens.Typography.directoryTitle)
+                            .lineLimit(1)
+                        if !entries.isEmpty {
+                            Text("\(entries.count) 项")
+                                .font(.system(size: 16, weight: .bold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 3)
+                                .background(.white.opacity(0.10), in: Capsule())
+                                .foregroundStyle(TVTokens.Color.secondaryText)
+                        }
+                    }
+
+                    HStack(spacing: 6) {
+                        Text("/")
+                            .font(.system(size: 17, weight: .bold, design: .monospaced))
+                            .foregroundStyle(TVTokens.Color.accent)
+                        if pathSegments.isEmpty {
+                            Text("共享根目录")
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundStyle(TVTokens.Color.secondaryText)
+                        } else {
+                            ForEach(Array(pathSegments.enumerated()), id: \.offset) { idx, seg in
+                                if idx > 0 {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundStyle(TVTokens.Color.tertiaryText)
+                                }
+                                Text(seg)
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundStyle(TVTokens.Color.secondaryText)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer()
+
+            AdaptiveGlassContainer(spacing: 12) {
+                HStack(spacing: 12) {
+                    if env.sources.count > 1, let current = source {
+                        Menu {
+                            ForEach(env.sources) { src in
+                                Button {
+                                    selectedSource = src
+                                } label: {
+                                    Label(src.name, systemImage: src.id == current.id ? "checkmark" : (src.kind == .smb ? "externaldrive.fill" : "globe"))
+                                }
+                            }
+                        } label: {
+                            Label("切换服务器", systemImage: "arrow.left.arrow.right")
+                                .font(TVTokens.Typography.button)
+                                .lineLimit(1)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 12)
+                        }
+                        .tvAdaptiveGlassButtonStyle()
+                    }
+
+                    Button {
+                        withAnimation(TVTokens.Motion.panel) {
+                            storedIsGrid.toggle()
+                        }
+                    } label: {
+                        Label(effectiveIsGrid ? "列表视图" : "网格视图", systemImage: effectiveIsGrid ? "list.bullet" : "square.grid.2x2")
+                            .font(TVTokens.Typography.button)
+                            .lineLimit(1)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 12)
+                    }
+                    .tvAdaptiveGlassButtonStyle()
+
+                    Button {
+                        Task { await loadDirectory() }
+                    } label: {
+                        Label("刷新", systemImage: "arrow.clockwise")
+                            .font(TVTokens.Typography.button)
+                            .lineLimit(1)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, 12)
+                    }
+                    .tvAdaptiveGlassButtonStyle()
+                }
+            }
         }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 14)
+        .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false)
     }
 
     private func gridContent(source: MediaSourceConfig) -> some View {
@@ -237,74 +285,120 @@ private struct DriveDirectoryPage: View {
             spacing: TVTokens.Spacing.gridSpacing
         ) {
             ForEach(entries) { entry in
+                let theme = TVMediaTheme.palette(forTitle: entry.name, isDirectory: entry.isDirectory, isSubtitle: entry.isSubtitle)
                 Button {
                     open(entry, source: source)
                 } label: {
-                    VStack(alignment: .leading, spacing: 14) {
-                        HStack {
-                            Image(systemName: icon(for: entry))
-                                .font(.system(size: 36, weight: .semibold))
-                                .frame(width: TVTokens.Size.gridIcon, height: TVTokens.Size.gridIcon)
-                                .background(iconTint(for: entry).opacity(0.24), in: RoundedRectangle(cornerRadius: TVTokens.Radius.gridIconBlock))
-                                .foregroundStyle(iconTint(for: entry))
-                            Spacer()
-                            if entry.isVideo {
-                                VideoBadgeRow(entry.badges)
+                    VStack(alignment: .leading, spacing: 0) {
+                        // 顶部彩色氛围海报头：杜绝徽章与图标相互挤压
+                        ZStack(alignment: .topLeading) {
+                            LinearGradient(
+                                colors: [theme.primary.opacity(0.32), theme.secondary.opacity(0.20), Color.black.opacity(0.14)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: theme.symbol)
+                                    .font(.system(size: 30, weight: .semibold))
+                                    .frame(width: 58, height: 58)
+                                    .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                            .strokeBorder(.white.opacity(0.24), lineWidth: 1)
+                                    )
+                                    .foregroundStyle(.white)
+
+                                Spacer(minLength: 8)
+
+                                if entry.isVideo {
+                                    VideoBadgeRow(entry.badges, maxCount: 3)
+                                } else {
+                                    Text(theme.tag)
+                                        .font(.system(size: 15, weight: .bold))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 5)
+                                        .background(.white.opacity(0.14), in: Capsule())
+                                        .foregroundStyle(.white.opacity(0.92))
+                                }
                             }
+                            .padding(16)
                         }
+                        .frame(height: 94)
 
-                        Text(entry.name)
-                            .font(TVTokens.Typography.gridPrimary)
-                            .lineLimit(2)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(entry.isDirectory ? entry.name : TVTitleFormatter.cleanDisplayTitle(entry.name))
+                                .font(TVTokens.Typography.gridPrimary)
+                                .lineLimit(2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
 
-                        Spacer(minLength: 4)
+                            Spacer(minLength: 2)
 
-                        if entry.isDirectory {
-                            Text("文件夹")
+                            if entry.isDirectory {
+                                HStack {
+                                    Text("目录")
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 16, weight: .bold))
+                                }
                                 .font(TVTokens.Typography.tertiary)
                                 .foregroundStyle(TVTokens.Color.secondaryText)
-                        } else {
-                            let record = historyRecord(for: entry, source: source)
-                            if let record, record.duration > 0 {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    ProgressView(value: record.progress)
-                                        .tint(TVTokens.Color.accent)
-                                    Text("已看 \(Int(record.progress * 100))% · \(formatSize(entry.size))")
-                                        .font(TVTokens.Typography.tertiary)
-                                        .foregroundStyle(TVTokens.Color.secondaryText)
-                                }
                             } else {
-                                Text(formatSize(entry.size))
+                                let record = historyRecord(for: entry, source: source)
+                                if let record, record.duration > 0 {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        TVProgressBar(progress: record.progress, tint: theme.primary, secondaryTint: theme.secondary, height: 6)
+                                        Text("已播 \(Int(record.progress * 100))% · \(formatSize(entry.size))")
+                                            .font(TVTokens.Typography.tertiary)
+                                            .foregroundStyle(TVTokens.Color.secondaryText)
+                                    }
+                                } else {
+                                    HStack {
+                                        Text(entry.isVideo ? theme.tag : "字幕文件")
+                                            .foregroundStyle(theme.primary)
+                                        Spacer()
+                                        Text(formatSize(entry.size))
+                                    }
                                     .font(TVTokens.Typography.tertiary)
                                     .foregroundStyle(TVTokens.Color.secondaryText)
+                                }
                             }
                         }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                     }
-                    .padding(TVTokens.Spacing.cardInner)
                     .frame(height: TVTokens.Size.gridCardHeight)
                 }
-                .buttonStyle(TVCardButtonStyle())
+                .buttonStyle(TVCardButtonStyle(accentTint: theme.primary))
             }
         }
-        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 20)
     }
 
     private func listContent(source: MediaSourceConfig) -> some View {
-        LazyVStack(spacing: 12) {
+        LazyVStack(spacing: 14) {
             ForEach(entries) { entry in
+                let theme = TVMediaTheme.palette(forTitle: entry.name, isDirectory: entry.isDirectory, isSubtitle: entry.isSubtitle)
                 Button {
                     open(entry, source: source)
                 } label: {
                     HStack(spacing: 18) {
-                        Image(systemName: icon(for: entry))
-                            .font(.system(size: 32, weight: .semibold))
+                        Image(systemName: theme.symbol)
+                            .font(.system(size: 28, weight: .semibold))
                             .frame(width: TVTokens.Size.listIcon, height: TVTokens.Size.listIcon)
-                            .background(iconTint(for: entry).opacity(0.24), in: RoundedRectangle(cornerRadius: TVTokens.Radius.iconBlock))
-                            .foregroundStyle(iconTint(for: entry))
+                            .background(
+                                LinearGradient(colors: [theme.primary.opacity(0.40), theme.secondary.opacity(0.18)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                in: RoundedRectangle(cornerRadius: TVTokens.Radius.iconBlock, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: TVTokens.Radius.iconBlock, style: .continuous)
+                                    .strokeBorder(theme.primary.opacity(0.45), lineWidth: 1)
+                            )
+                            .foregroundStyle(.white)
 
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(entry.name)
+                            Text(entry.isDirectory ? entry.name : TVTitleFormatter.cleanDisplayTitle(entry.name))
                                 .font(TVTokens.Typography.listPrimary)
                                 .lineLimit(1)
 
@@ -318,7 +412,8 @@ private struct DriveDirectoryPage: View {
                                     if let record = historyRecord(for: entry, source: source), record.duration > 0 {
                                         Text("·")
                                         Text("已播 \(Int(record.progress * 100))%")
-                                            .foregroundStyle(TVTokens.Color.accent)
+                                            .fontWeight(.bold)
+                                            .foregroundStyle(theme.primary)
                                     }
                                 }
                                 .font(TVTokens.Typography.secondary)
@@ -326,22 +421,23 @@ private struct DriveDirectoryPage: View {
                             }
                         }
 
-                        Spacer()
+                        Spacer(minLength: 16)
 
                         if entry.isVideo {
-                            VideoBadgeRow(entry.badges)
+                            VideoBadgeRow(entry.badges, maxCount: 4)
                         }
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.system(size: 20, weight: .bold))
                             .foregroundStyle(TVTokens.Color.secondaryText)
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 22)
                     .padding(.vertical, 14)
                 }
-                .buttonStyle(TVListRowButtonStyle())
+                .buttonStyle(TVListRowButtonStyle(accentTint: theme.primary))
             }
         }
-        .padding(.vertical, 6)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 16)
     }
 
     private var emptyFolderCard: some View {
@@ -439,20 +535,6 @@ private struct DriveDirectoryPage: View {
 
     private func historyRecord(for entry: VFSEntry, source: MediaSourceConfig) -> PlaybackRecord? {
         env.history.first { $0.sourceID == source.id && $0.path == entry.path }
-    }
-
-    private func icon(for entry: VFSEntry) -> String {
-        if entry.isDirectory { return "folder.fill" }
-        if entry.isVideo { return "film.fill" }
-        if entry.isSubtitle { return "captions.bubble.fill" }
-        return "doc.fill"
-    }
-
-    private func iconTint(for entry: VFSEntry) -> Color {
-        if entry.isDirectory { return TVTokens.Color.folderTint }
-        if entry.isVideo { return TVTokens.Color.videoTint }
-        if entry.isSubtitle { return TVTokens.Color.subtitleTint }
-        return TVTokens.Color.secondaryText
     }
 
     private func formatSize(_ bytes: Int64) -> String {
