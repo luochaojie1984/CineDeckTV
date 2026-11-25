@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 import PlaybackKit
 import NetworkVFS
+import LocalStreamProxy
 import AppPreferences
 
 /// 播放页：FSPlayer 主引擎（经 127.0.0.1 短 ASCII 代理）+ 遥控长短按快进 + MX 极简条。

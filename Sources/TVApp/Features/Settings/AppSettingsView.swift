@@ -76,9 +76,9 @@ public struct AppSettingsView: View {
     private func choiceRow<T: Hashable>(keys: [(T, String)], selected: T, onSelect: @escaping (T) -> Void) -> some View {
         AdaptiveGlassContainer(spacing: 12) {
             HStack(spacing: 12) {
-                ForEach(Array(keys.enumerated()), id: \.offset) { _, pair in
-                    Button(pair.1) { onSelect(pair.0) }
-                        .tvAdaptiveGlassButtonStyle(prominent: pair.0 == selected)
+                ForEach(Array(keys.enumerated()), id: \.offset) { entry in
+                    Button(entry.element.1) { onSelect(entry.element.0) }
+                        .tvAdaptiveGlassButtonStyle(prominent: entry.element.0 == selected)
                 }
             }
         }
