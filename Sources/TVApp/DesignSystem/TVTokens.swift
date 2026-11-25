@@ -200,7 +200,7 @@ public enum TVMediaTheme {
             return TVMediaPalette(
                 primary: TVTokens.Color.amber,
                 secondary: TVTokens.Color.violet,
-                symbol: "sun.max.trianglebadge.exclamationmark.fill",
+                symbol: "sun.max.fill",
                 tag: "4K HDR"
             )
         }

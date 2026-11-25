@@ -139,6 +139,7 @@ public struct HomeSpotlightView: View {
                                         .padding(.vertical, 14)
                                 }
                                 .tvAdaptiveGlassButtonStyle(prominent: true)
+                                .tint(theme.primary)
 
                                 if let src = env.sources.first(where: { $0.id == hero.sourceID }) ?? env.sources.first {
                                     Button {
@@ -374,7 +375,7 @@ public struct HomeSpotlightView: View {
                                         .fill(TVTokens.Color.emerald)
                                         .frame(width: 8, height: 8)
                                 }
-                                Text("\(source.kind.displayName) · \(source.host):\(source.port)")
+                                Text("\(source.kind.displayName) · \(source.host):\(String(source.port))")
                                     .font(TVTokens.Typography.secondary)
                                     .foregroundStyle(TVTokens.Color.secondaryText)
                                     .lineLimit(1)

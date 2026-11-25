@@ -48,6 +48,7 @@ public struct SourceManagerView: View {
                                 .padding(.vertical, 14)
                         }
                         .tvAdaptiveGlassButtonStyle(prominent: true)
+                        .tint(TVTokens.Color.accent)
                     }
                 }
                 .focusSection()
@@ -164,7 +165,7 @@ public struct SourceManagerView: View {
             }
 
             HStack(spacing: 16) {
-                Label("\(src.host):\(src.port)", systemImage: "network")
+                Label("\(src.host):\(String(src.port))", systemImage: "network")
                     .lineLimit(1)
                 Text("·")
                     .foregroundStyle(TVTokens.Color.tertiaryText)
@@ -195,6 +196,7 @@ public struct SourceManagerView: View {
                             .padding(.vertical, 11)
                     }
                     .tvAdaptiveGlassButtonStyle(prominent: true)
+                    .tint(tint)
 
                     Button {
                         speedTestSource = src

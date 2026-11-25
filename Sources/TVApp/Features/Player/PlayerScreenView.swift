@@ -235,7 +235,7 @@ public struct PlayerScreenView: View {
                     }
                 }
                 .padding(.trailing, 40)
-                .padding(.vertical, 36)
+                .padding(.vertical, 26)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
 
@@ -876,6 +876,7 @@ public struct PlayerScreenView: View {
                                 .fixedSize(horizontal: true, vertical: false)
                         }
                         .tvAdaptiveGlassButtonStyle(prominent: true)
+                        .tint(TVTokens.Color.accent)
 
                         Button {
                             withAnimation(TVTokens.Motion.focus) {

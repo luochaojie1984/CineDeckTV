@@ -29,7 +29,7 @@ public struct PlayerSideDrawer: View {
 
     public var body: some View {
         let accent = kind == .subtitles ? TVTokens.Color.accent : TVTokens.Color.violet
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 14) {
                 Image(systemName: kind == .subtitles ? "captions.bubble.fill" : "waveform.and.magnifyingglass")
                     .font(.system(size: 24, weight: .semibold))
@@ -43,6 +43,7 @@ public struct PlayerSideDrawer: View {
                 Spacer()
                 Button("完成", action: onClose)
                     .tvAdaptiveGlassButtonStyle(prominent: true)
+                    .tint(accent)
             }
             .focusSection()
 
@@ -63,15 +64,15 @@ public struct PlayerSideDrawer: View {
             }
             .focusSection()
         }
-        .padding(28)
+        .padding(24)
         .frame(width: TVTokens.Size.drawerWidth)
-        .frame(maxHeight: 980)
+        .frame(maxHeight: 1000)
         .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false, tint: accent.opacity(0.08))
     }
 
     @ViewBuilder
     private var subtitlesBody: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 12) {
             Button(action: onDisableSubtitle) {
                 HStack {
                     Image(systemName: activeExternalPath == nil && activeEmbeddedSubID == nil ? "checkmark.circle.fill" : "circle")
@@ -80,7 +81,8 @@ public struct PlayerSideDrawer: View {
                     Spacer()
                 }
                 .font(TVTokens.Typography.button)
-                .padding(14)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
             }
             .buttonStyle(TVListRowButtonStyle(accentTint: TVTokens.Color.accent))
 
@@ -100,7 +102,8 @@ public struct PlayerSideDrawer: View {
                                 .lineLimit(1)
                             Spacer()
                         }
-                        .padding(14)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                     }
                     .buttonStyle(TVListRowButtonStyle(accentTint: TVTokens.Color.accent))
                 }
@@ -122,7 +125,8 @@ public struct PlayerSideDrawer: View {
                                 .lineLimit(1)
                             Spacer()
                         }
-                        .padding(14)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                     }
                     .buttonStyle(TVListRowButtonStyle(accentTint: TVTokens.Color.accent))
                 }
@@ -145,9 +149,9 @@ public struct PlayerSideDrawer: View {
                 Text("字号大小")
                     .font(TVTokens.Typography.secondary)
                     .foregroundStyle(TVTokens.Color.secondaryText)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4), spacing: 12) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
                     ForEach([28.0, 34.0, 42.0, 50.0], id: \.self) { size in
-                        drawerPill("\(Int(size))pt", prominent: abs(style.fontSize - size) < 1) {
+                        drawerPill("\(Int(size))pt", prominent: abs(style.fontSize - size) < 1, showCheckmark: false) {
                             style.fontSize = size
                         }
                     }
@@ -241,20 +245,20 @@ public struct PlayerSideDrawer: View {
         }
     }
 
-    private func drawerPill(_ title: String, prominent: Bool = false, tint: Color = TVTokens.Color.accent, action: @escaping () -> Void) -> some View {
+    private func drawerPill(_ title: String, prominent: Bool = false, tint: Color = TVTokens.Color.accent, showCheckmark: Bool = true, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                if prominent {
+            HStack(spacing: 5) {
+                if prominent && showCheckmark {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 16))
+                        .font(.system(size: 15))
                 }
                 Text(title)
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
         }
         .tvAdaptiveGlassButtonStyle(prominent: prominent)
