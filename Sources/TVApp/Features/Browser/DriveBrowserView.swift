@@ -6,6 +6,7 @@ public struct DriveBrowserView: View {
     @EnvironmentObject private var env: AppEnvironment
 
     public let source: MediaSourceConfig
+    public var onPlay: (VFSEntry) -> Void
 
     @State private var entries: [VFSEntry] = []
     @State private var currentPath = ""
@@ -23,8 +24,9 @@ public struct DriveBrowserView: View {
         case size = "大小"
     }
 
-    public init(source: MediaSourceConfig) {
+    public init(source: MediaSourceConfig, onPlay: @escaping (VFSEntry) -> Void = { _ in }) {
         self.source = source
+        self.onPlay = onPlay
     }
 
     private var visibleEntries: [VFSEntry] {
@@ -242,6 +244,8 @@ public struct DriveBrowserView: View {
     private func open(_ entry: VFSEntry) {
         if entry.isDirectory {
             currentPath = entry.path
+        } else if entry.isVideo {
+            onPlay(entry)
         }
     }
 
