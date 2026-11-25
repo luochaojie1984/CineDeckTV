@@ -53,10 +53,19 @@ public actor LocalHTTPStreamProxy {
     }
 
     public func start(preferredPort: UInt16 = 0) throws {
-        if let server {
+        try ensureRunning(forceRestart: false, preferredPort: preferredPort)
+    }
+
+    /// 确保本地回环监听处于可用状态；若 tvOS 后台挂起回收了 socket，自动重建监听端口并保留已注册路由。
+    public func ensureRunning(forceRestart: Bool = false, preferredPort: UInt16 = 0) throws {
+        if !forceRestart, let server, server.isAlive() {
             self.port = server.port
             return
         }
+        server?.stop()
+        server = nil
+        port = nil
+
         let srv = try POSIXLoopbackServer(preferredPort: preferredPort) { [weak self] fd in
             guard let self else {
                 POSIXLoopbackServer.closeFD(fd)
@@ -422,7 +431,23 @@ private final class POSIXLoopbackServer: @unchecked Sendable {
                     }
                 }
                 if clientFD < 0 {
-                    if errno == EINTR { continue }
+                    let err = errno
+                    if self.isStopped { break }
+                    if err == EINTR { continue }
+                    if err == EAGAIN || err == EWOULDBLOCK {
+                        usleep(10_000)
+                        continue
+                    }
+                    var shouldClose = false
+                    self.stateLock.lock()
+                    if !self.stopped {
+                        self.stopped = true
+                        shouldClose = true
+                    }
+                    self.stateLock.unlock()
+                    if shouldClose {
+                        Self.closeFD(fd)
+                    }
                     break
                 }
                 #if canImport(Darwin)
@@ -438,6 +463,73 @@ private final class POSIXLoopbackServer: @unchecked Sendable {
         stateLock.lock()
         defer { stateLock.unlock() }
         return stopped
+    }
+
+    func isAlive() -> Bool {
+        guard !isStopped, listenFD >= 0, port > 0 else { return false }
+
+        var boundAddr = sockaddr_in()
+        var len = socklen_t(MemoryLayout<sockaddr_in>.size)
+        let nameRes = withUnsafeMutablePointer(to: &boundAddr) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                getsockname(listenFD, $0, &len)
+            }
+        }
+        guard nameRes == 0, UInt16(bigEndian: boundAddr.sin_port) == port else {
+            return false
+        }
+
+        #if canImport(Darwin)
+        let probeFD = Darwin.socket(AF_INET, SOCK_STREAM, 0)
+        #else
+        let probeFD = Glibc.socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
+        #endif
+        guard probeFD >= 0 else { return false }
+        defer { Self.closeFD(probeFD) }
+
+        #if canImport(Darwin)
+        var noSigPipe: Int32 = 1
+        setsockopt(probeFD, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
+        #endif
+
+        let flags = fcntl(probeFD, F_GETFL, 0)
+        if flags >= 0 {
+            _ = fcntl(probeFD, F_SETFL, flags | O_NONBLOCK)
+        }
+
+        var target = sockaddr_in()
+        target.sin_family = sa_family_t(AF_INET)
+        target.sin_port = port.bigEndian
+        target.sin_addr.s_addr = UInt32(0x7F000001).bigEndian
+
+        let connRes = withUnsafePointer(to: &target) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                #if canImport(Darwin)
+                return Darwin.connect(probeFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                #else
+                return Glibc.connect(probeFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                #endif
+            }
+        }
+        if connRes == 0 {
+            return true
+        }
+        guard errno == EINPROGRESS else {
+            return false
+        }
+
+        var pfd = pollfd(fd: probeFD, events: Int16(POLLOUT), revents: 0)
+        let pollRes = poll(&pfd, 1, 150)
+        guard pollRes > 0 else {
+            return false
+        }
+
+        var soErr: Int32 = 0
+        var soErrLen = socklen_t(MemoryLayout<Int32>.size)
+        guard getsockopt(probeFD, SOL_SOCKET, SO_ERROR, &soErr, &soErrLen) == 0 else {
+            return false
+        }
+        return soErr == 0
     }
 
     func stop() {

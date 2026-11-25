@@ -31,6 +31,8 @@ public enum PreviewScenario: String, Sendable {
 /// 全局依赖容器：配置、服务器源、Keychain 密码、播放历史与预览演示数据。
 @MainActor
 public final class AppEnvironment: ObservableObject {
+    public static let appDidReturnToForegroundNotification = Notification.Name("local.personal.cinedecktv.didReturnToForeground")
+
     @Published public private(set) var settings: AppSettings
     @Published public private(set) var sources: [MediaSourceConfig]
     @Published public private(set) var history: [PlaybackRecord]
@@ -118,6 +120,19 @@ public final class AppEnvironment: ObservableObject {
         if let existing = providers.removeValue(forKey: sourceID) {
             await existing.disconnect()
         }
+    }
+
+    public func resetAllProviders() async {
+        let existing = providers
+        providers.removeAll()
+        for (_, provider) in existing {
+            await provider.disconnect()
+        }
+    }
+
+    public func handleReturnToForeground() async {
+        await resetAllProviders()
+        NotificationCenter.default.post(name: Self.appDidReturnToForegroundNotification, object: nil)
     }
 
     public func recordHistory(source: MediaSourceConfig, path: String, title: String, position: Double, duration: Double) {

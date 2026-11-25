@@ -99,4 +99,54 @@ struct LocalProxyLiveStreamingTests {
         #expect(headData[0] == UInt8(100 % 251))
         #expect(headData[1023] == UInt8(1123 % 251))
     }
+
+    @Test("ensureRunning 支持强制重启与停止后自动恢复回环端口")
+    func ensureRunningRecoversListener() async throws {
+        let totalSize: Int64 = 128 * 1024
+        let cache = ReadAheadStreamCache(source: PatternChunkSource(totalBytes: totalSize))
+        let proxy = LocalHTTPStreamProxy(cache: cache)
+
+        try await proxy.start(preferredPort: 0)
+        let firstPort = await proxy.port
+        #expect((firstPort ?? 0) > 0)
+
+        let route = await proxy.register(fileExtension: "mkv")
+        let url1 = await proxy.localURL(for: route)!
+        var headReq = URLRequest(url: url1)
+        headReq.httpMethod = "HEAD"
+        let (_, resp1) = try await URLSession.shared.data(for: headReq)
+        #expect((resp1 as? HTTPURLResponse)?.statusCode == 200)
+
+        // Live listener stays on same port when forceRestart is false
+        try await proxy.ensureRunning(forceRestart: false)
+        let keptPort = await proxy.port
+        #expect(keptPort == firstPort)
+
+        // Force restart rebinds while keeping registered route
+        try await proxy.ensureRunning(forceRestart: true)
+        let restartedPort = await proxy.port
+        #expect((restartedPort ?? 0) > 0)
+        let url2 = await proxy.localURL(for: route)!
+        var rangeReq = URLRequest(url: url2)
+        rangeReq.setValue("bytes=0-1023", forHTTPHeaderField: "Range")
+        let (rangeData, resp2) = try await URLSession.shared.data(for: rangeReq)
+        #expect((resp2 as? HTTPURLResponse)?.statusCode == 206)
+        #expect(rangeData.count == 1024)
+
+        // Full stop -> ensureRunning() recovers and serves new route cleanly
+        await proxy.stop()
+        let stoppedPort = await proxy.port
+        #expect(stoppedPort == nil)
+
+        try await proxy.ensureRunning()
+        let recoveredPort = await proxy.port
+        #expect((recoveredPort ?? 0) > 0)
+        let route2 = await proxy.register(fileExtension: "mp4")
+        let url3 = await proxy.localURL(for: route2)!
+        let (fullData, resp3) = try await URLSession.shared.data(for: URLRequest(url: url3))
+        #expect((resp3 as? HTTPURLResponse)?.statusCode == 200)
+        #expect(fullData.count == Int(totalSize))
+
+        await proxy.stop()
+    }
 }

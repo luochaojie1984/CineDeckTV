@@ -37,9 +37,17 @@ public final class PlaybackCoordinator: ObservableObject {
 
     private var current: (any PlayerEngine)?
     private var currentURL: String = ""
+    private var currentFileName: String = ""
     private var currentOptions = EngineLoadOptions()
     private var activePreference: EngineKind = .automatic
+    private var didRetryFSForCurrentItem = false
     private var didFallbackForCurrentItem = false
+
+    private static func isAVPlayerCompatibleContainer(_ fileName: String) -> Bool {
+        let ext = URL(fileURLWithPath: fileName).pathExtension.lowercased()
+        if ext.isEmpty { return true }
+        return ["mp4", "m4v", "mov", "ts", "m2ts", "m3u8", "mp3", "m4a", "aac"].contains(ext)
+    }
 
     public init() {
         wireCallbacks()
@@ -47,10 +55,12 @@ public final class PlaybackCoordinator: ObservableObject {
 
     public var engine: (any PlayerEngine)? { current }
 
-    public func load(url: String, startAt: TimeInterval, options: EngineLoadOptions, preference: EngineKind = .automatic) {
+    public func load(url: String, fileName: String = "", startAt: TimeInterval, options: EngineLoadOptions, preference: EngineKind = .automatic) {
         currentURL = url
+        currentFileName = fileName
         currentOptions = options
         activePreference = preference
+        didRetryFSForCurrentItem = false
         didFallbackForCurrentItem = false
         lastError = nil
         fallbackNotice = nil
@@ -85,13 +95,15 @@ public final class PlaybackCoordinator: ObservableObject {
         currentTime = max(0, time)
     }
 
-    public func seekToKeyframePreview(at time: TimeInterval) async {
+    public func seekToKeyframePreview(at time: TimeInterval) async -> TimeInterval {
+        let actual: TimeInterval
         if activeEngine == .fsplayer {
-            await fsEngine.seekToKeyframePreview(at: time)
+            actual = await fsEngine.seekToKeyframePreview(at: time)
         } else {
-            avEngine.seek(to: time, accurate: false)
+            actual = await avEngine.seekToKeyframePreview(at: time)
         }
-        currentTime = current?.currentTime ?? time
+        currentTime = actual
+        return actual
     }
 
     public func stepToNextFrame() {
@@ -207,7 +219,22 @@ public final class PlaybackCoordinator: ObservableObject {
         }
         fsEngine.onError = { [weak self] message in
             guard let self else { return }
-            if self.activePreference == .automatic && !self.didFallbackForCurrentItem && !self.currentURL.isEmpty {
+            if !self.didRetryFSForCurrentItem && !self.currentURL.isEmpty {
+                self.didRetryFSForCurrentItem = true
+                let resumeAt = max(0, self.currentTime)
+                let urlSnapshot = self.currentURL
+                let optsSnapshot = self.currentOptions
+                let allowFallback = self.activePreference == .automatic && Self.isAVPlayerCompatibleContainer(self.currentFileName)
+                self.fsEngine.shutdown()
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 150_000_000)
+                    guard let self, self.currentURL == urlSnapshot else { return }
+                    self.startFS(url: urlSnapshot, startAt: resumeAt, options: optsSnapshot, allowFallback: allowFallback)
+                }
+                return
+            }
+
+            if self.activePreference == .automatic && !self.didFallbackForCurrentItem && !self.currentURL.isEmpty && Self.isAVPlayerCompatibleContainer(self.currentFileName) {
                 self.didFallbackForCurrentItem = true
                 self.fallbackNotice = "FSPlayer 解码异常，已自动切换到系统 AVPlayer"
                 let resumeAt = max(0, self.currentTime)

@@ -28,4 +28,36 @@ struct AppPreferencesTests {
         #expect(AppSettings.ScrubMode.standard.ceiling == 120)
         #expect(AppSettings.ScrubMode.turbo.ceiling == 240)
     }
+
+    @Test("移植 AuraTV 快进/记忆续播/胶囊色配置默认与编解码一致")
+    func auraAlignedControlsSettingsRoundTrip() throws {
+        var settings = AppSettings()
+        #expect(settings.shortSeekSeconds == 10)
+        #expect(settings.shortPressSeekBehavior == .fixedStepJump)
+        #expect(settings.longPressSeekMode == .mxLiveKeyframeScrub)
+        #expect(settings.enableTouchpadScrub == true)
+        #expect(settings.enableResumePlayback == true)
+        #expect(settings.scrubBarColorHex == AppSettings.ScrubBarColorPreset.skyBlue.rawValue)
+
+        settings.shortSeekSeconds = 30
+        settings.shortPressSeekBehavior = .multiStageShuttle
+        settings.longPressSeekMode = .continuousFastPlay
+        settings.enableTouchpadScrub = false
+        settings.enableResumePlayback = false
+        settings.scrubBarColorHex = AppSettings.ScrubBarColorPreset.amberGold.rawValue
+
+        let data = try JSONEncoder().encode(settings)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        #expect(decoded == settings)
+
+        let legacyJSON = Data("{\"cacheMegabytes\": 144}".utf8)
+        let legacyDecoded = try JSONDecoder().decode(AppSettings.self, from: legacyJSON)
+        #expect(legacyDecoded.cacheMegabytes == 144)
+        #expect(legacyDecoded.shortSeekSeconds == 10)
+        #expect(legacyDecoded.shortPressSeekBehavior == .fixedStepJump)
+        #expect(legacyDecoded.longPressSeekMode == .mxLiveKeyframeScrub)
+        #expect(legacyDecoded.enableTouchpadScrub == true)
+        #expect(legacyDecoded.enableResumePlayback == true)
+        #expect(legacyDecoded.scrubBarColorHex == "#38BDF8")
+    }
 }

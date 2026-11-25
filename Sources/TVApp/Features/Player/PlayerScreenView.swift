@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import QuartzCore
 import NetworkVFS
 import LocalStreamProxy
 import PlaybackKit
@@ -10,6 +11,7 @@ import AppPreferences
 public struct PlayerScreenView: View {
     @EnvironmentObject private var env: AppEnvironment
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     public let source: MediaSourceConfig
     public let entry: VFSEntry
@@ -17,7 +19,7 @@ public struct PlayerScreenView: View {
     public let previewOpenHUD: Bool
 
     @StateObject private var coordinator = PlaybackCoordinator()
-    @State private var scrub = MXScrubController()
+    @StateObject private var scrub = MXScrubController()
     @State private var proxy: LocalHTTPStreamProxy?
     @State private var streamCache: ReadAheadStreamCache?
     @State private var externalSubtitles: [SubtitleCandidate] = []
@@ -30,17 +32,16 @@ public struct PlayerScreenView: View {
     @State private var activeDrawer: ActivePlayerDrawer?
     @State private var showTechStats = false
     @State private var showResumeBanner = false
-    @State private var scrubRateBadge: Double?
-    @State private var previewTime: Double = 0
-    @State private var isTouchpadScrubbing = false
-    @State private var touchpadOriginTime: Double = 0
     @State private var errorMessage: String?
-
-    @State private var shortPressDirection: Bool?
-    @State private var shortPressCount = 0
-    @State private var shortPressCommitTask: Task<Void, Never>?
-    @State private var scrubWorkerTask: Task<Void, Never>?
-    @State private var latestScrubTarget: Double?
+    @State private var needsForegroundRecovery = false
+    @State private var isRecoveringForeground = false
+    @State private var resumePositionAfterBackground: Double = 0
+    @State private var didDismiss = false
+    @State private var wasPlayingBeforeScrub = true
+    @State private var isFastPlaying = false
+    @State private var fastPlayAnchorTime: Double = 0
+    @State private var fastPlayStartWallTime: CFTimeInterval = 0
+    @State private var fastPlayMeasuredRate: Double = 3.0
     @State private var hudAutoHideTask: Task<Void, Never>?
     @State private var statsPollTask: Task<Void, Never>?
     @State private var historySaveTask: Task<Void, Never>?
@@ -89,41 +90,38 @@ public struct PlayerScreenView: View {
             }
 
             RemoteCaptureRepresentable(
-                isCaptureEnabled: !showHUD && activeDrawer == nil && nextEpisodeCountdown == nil && !previewOpenHUD,
+                isCaptureEnabled: !showHUD && activeDrawer == nil && nextEpisodeCountdown == nil && !previewOpenHUD && errorMessage == nil,
+                enableTouchpadScrub: env.settings.enableTouchpadScrub,
                 onShortPress: { forward in handleShortPress(forward: forward) },
                 onLongPressBegan: { forward in startScrub(forward: forward) },
                 onLongPressEnded: { endScrub() },
-                onTouchpadPanBegan: {
-                    isTouchpadScrubbing = true
-                    touchpadOriginTime = coordinator.currentTime
-                    previewTime = touchpadOriginTime
-                    Task {
-                        await proxy?.setScrubMode(true)
-                        await streamCache?.setScrubMode(true)
-                    }
-                },
-                onTouchpadPanChanged: { delta in
-                    let dur = max(1, coordinator.duration)
-                    let clamped = min(dur, max(0, touchpadOriginTime + delta))
-                    previewTime = clamped
-                },
-                onTouchpadPanEnded: {
-                    isTouchpadScrubbing = false
-                    coordinator.seek(to: previewTime, accurate: true)
-                    Task {
-                        await streamCache?.setScrubMode(false)
-                        await proxy?.setScrubMode(false)
-                    }
-                },
+                onTouchpadPanBegan: { beginTouchpadScrub() },
+                onTouchpadPanChanged: { delta in scrub.updateTouchpadPan(deltaFromOrigin: delta) },
+                onTouchpadPanEnded: { endTouchpadScrub() },
                 onMenu: nil,
                 onPlayPause: {
-                    togglePlayPause()
-                    bumpHUD()
+                    if scrub.isScrubbing {
+                        commitActiveScrub()
+                    } else {
+                        togglePlayPause()
+                        bumpHUD()
+                    }
                 },
-                onSelect: { toggleHUD() },
-                onShowHUD: { bumpHUD() }
+                onSelect: {
+                    if scrub.isScrubbing {
+                        commitActiveScrub()
+                    } else {
+                        toggleHUD()
+                    }
+                },
+                onShowHUD: {
+                    if scrub.isScrubbing {
+                        commitActiveScrub()
+                    }
+                    bumpHUD()
+                }
             )
-            .allowsHitTesting(!showHUD && activeDrawer == nil && nextEpisodeCountdown == nil && !previewOpenHUD)
+            .allowsHitTesting(!showHUD && activeDrawer == nil && nextEpisodeCountdown == nil && !previewOpenHUD && errorMessage == nil)
 
             if coordinator.isBuffering && !scrub.isScrubbing && !previewOpenHUD {
                 VStack(spacing: 14) {
@@ -152,8 +150,9 @@ public struct PlayerScreenView: View {
                 resumePill
             }
 
-            if scrub.isScrubbing || isTouchpadScrubbing {
+            if !showHUD && !previewOpenHUD && (scrub.isShowingBar || isFastPlaying) {
                 compactBottomScrubBar
+                    .allowsHitTesting(false)
             }
 
             if showHUD || previewOpenHUD {
@@ -257,8 +256,57 @@ public struct PlayerScreenView: View {
             UIApplication.shared.isIdleTimerDisabled = true
             await startPlayback(for: entry, startAt: initialResumePosition)
         }
+        .onChange(of: coordinator.currentTime) { _, newValue in
+            if isFastPlaying {
+                let wallElapsed = CACurrentMediaTime() - fastPlayStartWallTime
+                if wallElapsed >= 0.35 {
+                    let measured = (newValue - fastPlayAnchorTime) / wallElapsed
+                    if measured.isFinite && measured > 0 {
+                        fastPlayMeasuredRate = fastPlayMeasuredRate * 0.6 + min(8.0, measured) * 0.4
+                    }
+                }
+            }
+        }
+        .onChange(of: coordinator.lastError) { _, newError in
+            if let newError, !didDismiss {
+                errorMessage = newError
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard !previewOpenHUD, !didDismiss else { return }
+            switch newPhase {
+            case .background:
+                let pos = scrub.isScrubbing ? scrub.synchronizedDisplayTime : coordinator.currentTime
+                if pos > 0 {
+                    resumePositionAfterBackground = pos
+                }
+                if isFastPlaying {
+                    isFastPlaying = false
+                    coordinator.setMuted(false)
+                    coordinator.setPlaybackRate(env.settings.playbackRate)
+                }
+                scrub.cancelAll()
+                coordinator.pause()
+                saveCurrentProgress(positionOverride: resumePositionAfterBackground)
+                needsForegroundRecovery = true
+            case .active:
+                if needsForegroundRecovery && !isRecoveringForeground {
+                    needsForegroundRecovery = false
+                    Task { await recoverAfterForeground() }
+                }
+            default:
+                break
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: AppEnvironment.appDidReturnToForegroundNotification)) { _ in
+            guard !previewOpenHUD, !didDismiss, needsForegroundRecovery, !isRecoveringForeground else { return }
+            needsForegroundRecovery = false
+            Task { await recoverAfterForeground() }
+        }
         .onDisappear {
+            didDismiss = true
             UIApplication.shared.isIdleTimerDisabled = false
+            scrub.cancelAll()
             teardownTasks()
             saveCurrentProgress()
             coordinator.shutdown()
@@ -279,45 +327,105 @@ public struct PlayerScreenView: View {
 
     // MARK: - 启动与字幕加载
 
+    private func recoverAfterForeground() async {
+        guard !isRecoveringForeground, !didDismiss else { return }
+        isRecoveringForeground = true
+        defer { isRecoveringForeground = false }
+
+        if isFastPlaying {
+            isFastPlaying = false
+            coordinator.setMuted(false)
+            coordinator.setPlaybackRate(env.settings.playbackRate)
+        }
+        scrub.cancelAll()
+        teardownTasks()
+        coordinator.shutdown()
+        if let oldProxy = proxy {
+            proxy = nil
+            await oldProxy.stop()
+        }
+        streamCache = nil
+        await env.resetProvider(for: source.id)
+
+        let resumeAt = resumePositionAfterBackground > 0
+            ? resumePositionAfterBackground
+            : (coordinator.currentTime > 0 ? coordinator.currentTime : initialResumePosition)
+        await startPlayback(for: activeEntry, startAt: resumeAt)
+    }
+
     private func startPlayback(for item: VFSEntry, startAt: Double) async {
         currentEntry = item
         errorMessage = nil
-        do {
-            let provider = try await env.provider(for: source)
-            let chunkSource = try await provider.makeChunkSource(path: item.path)
-            let cacheConfig = buildCacheConfig()
-            let cache = ReadAheadStreamCache(source: chunkSource, config: cacheConfig)
-            self.streamCache = cache
+        let effectiveStartAt = env.settings.enableResumePlayback ? startAt : 0
 
-            let ext = (item.name as NSString).pathExtension.lowercased()
-            let totalSize = try await chunkSource.contentLength()
-            var moovOffset: Int64?
-            var moovLength = 0
-            if ext == "mp4" || ext == "mov" || ext == "m4v" {
-                if let moov = try? await provider.locateMoov(path: item.path), moov.offset > totalSize / 2 {
-                    moovOffset = moov.offset
-                    moovLength = moov.length
+        if let oldProxy = proxy {
+            proxy = nil
+            await oldProxy.stop()
+        }
+
+        do {
+            var openedProvider: (any VFSProvider)?
+            for attempt in 1...2 {
+                guard !didDismiss else { return }
+                if attempt > 1 {
+                    await env.resetProvider(for: source.id)
+                }
+                do {
+                    let provider = try await env.provider(for: source)
+                    let chunkSource = try await provider.makeChunkSource(path: item.path)
+                    let cacheConfig = buildCacheConfig()
+                    let cache = ReadAheadStreamCache(source: chunkSource, config: cacheConfig)
+                    self.streamCache = cache
+
+                    let ext = (item.name as NSString).pathExtension.lowercased()
+                    let totalSize = try await chunkSource.contentLength()
+                    var moovOffset: Int64?
+                    var moovLength = 0
+                    if ext == "mp4" || ext == "mov" || ext == "m4v" {
+                        if let moov = try? await provider.locateMoov(path: item.path), moov.offset > totalSize / 2 {
+                            moovOffset = moov.offset
+                            moovLength = moov.length
+                        }
+                    }
+                    try await cache.prepare(totalSize: totalSize, moovOffset: moovOffset, moovLength: moovLength)
+
+                    let proxy = LocalHTTPStreamProxy(cache: cache)
+                    try await proxy.ensureRunning(forceRestart: attempt > 1, preferredPort: 0)
+                    let route = await proxy.register(fileExtension: ext)
+                    guard let url = await proxy.localURL(for: route) else {
+                        throw PlayerEngineError.loadFailed("本地代理端口未就绪")
+                    }
+                    self.proxy = proxy
+                    self.lastLoadedURL = url.absoluteString
+
+                    coordinator.onPlaybackFinished = {
+                        Task { @MainActor in await handlePlaybackEnded(currentItem: item) }
+                    }
+                    coordinator.load(
+                        url: url.absoluteString,
+                        fileName: item.name,
+                        startAt: effectiveStartAt,
+                        options: currentEngineOptions,
+                        preference: mapPreference(env.settings.enginePreference)
+                    )
+                    coordinator.applySubtitleStyle(subtitleStyle)
+                    openedProvider = provider
+                    break
+                } catch {
+                    if let failedProxy = self.proxy {
+                        self.proxy = nil
+                        await failedProxy.stop()
+                    }
+                    if attempt == 2 {
+                        throw error
+                    }
+                    try? await Task.sleep(nanoseconds: 150_000_000)
                 }
             }
-            try await cache.prepare(totalSize: totalSize, moovOffset: moovOffset, moovLength: moovLength)
 
-            let proxy = LocalHTTPStreamProxy(cache: cache)
-            try await proxy.start(preferredPort: 0)
-            let route = await proxy.register(fileExtension: ext)
-            guard let url = await proxy.localURL(for: route) else {
-                errorMessage = "本地代理端口未就绪"
-                return
-            }
-            self.proxy = proxy
-            self.lastLoadedURL = url.absoluteString
+            guard let provider = openedProvider, !didDismiss else { return }
 
-            coordinator.onPlaybackFinished = {
-                Task { @MainActor in await handlePlaybackEnded(currentItem: item) }
-            }
-            coordinator.load(url: url.absoluteString, startAt: startAt, options: currentEngineOptions, preference: mapPreference(env.settings.enginePreference))
-            coordinator.applySubtitleStyle(subtitleStyle)
-
-            if startAt > 10 {
+            if effectiveStartAt > 10 {
                 withAnimation { showResumeBanner = true }
                 Task {
                     try? await Task.sleep(nanoseconds: 5_000_000_000)
@@ -329,7 +437,9 @@ public struct PlayerScreenView: View {
             await loadExternalSubtitles(provider: provider, videoEntry: item)
             await resolveNextEpisode(provider: provider, currentItem: item)
         } catch {
-            errorMessage = error.localizedDescription
+            if !didDismiss {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -404,73 +514,122 @@ public struct PlayerScreenView: View {
         }
     }
 
-    // MARK: - 遥控器短按合并 & 单飞不积压 MX 快进
+    // MARK: - 遥控器短按（跳秒 / 多级倍速穿梭）& 闭环同步快进
 
-    private func handleShortPress(forward: Bool) {
-        if shortPressDirection != forward {
-            shortPressDirection = forward
-            shortPressCount = 0
-        }
-        shortPressCount += 1
-        let step = ScrubMath.mergedJump(shortPressCount: shortPressCount)
-        let target = coordinator.currentTime + (forward ? step : -step)
-        let dur = max(target, coordinator.duration)
-        previewTime = min(max(0, target), dur)
-
-        shortPressCommitTask?.cancel()
-        shortPressCommitTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 280_000_000)
-            guard !Task.isCancelled else { return }
-            coordinator.seek(to: previewTime, accurate: true)
-            shortPressCount = 0
-            shortPressDirection = nil
-        }
-    }
-
-    private func startScrub(forward: Bool) {
-        let dur = max(1, coordinator.duration > 0 ? coordinator.duration : 7200)
-        previewTime = coordinator.currentTime
+    private func enterScrubStateIfNeeded() {
+        guard !scrub.isScrubbing else { return }
+        wasPlayingBeforeScrub = coordinator.isPlaying
+        coordinator.pause()
+        coordinator.setMuted(true)
         Task {
             await proxy?.setScrubMode(true)
             await streamCache?.setScrubMode(true)
         }
+    }
 
-        scrub.onRateChange = { rate in scrubRateBadge = rate }
-        scrub.onTick = { target, _ in
-            previewTime = target
-            latestScrubTarget = target
-            if scrubWorkerTask == nil {
-                scrubWorkerTask = Task { @MainActor in
-                    await runSingleFlightScrubLoop()
+    private func exitScrubStateAndSeek(to finalTarget: TimeInterval, accurate: Bool) {
+        Task {
+            await streamCache?.setScrubMode(false)
+            await proxy?.setScrubMode(false)
+        }
+        coordinator.seek(to: finalTarget, accurate: accurate)
+        coordinator.setMuted(false)
+        if wasPlayingBeforeScrub {
+            coordinator.play()
+        }
+    }
+
+    private func handleShortPress(forward: Bool) {
+        let dur = max(1, coordinator.duration > 0 ? coordinator.duration : 7200)
+        enterScrubStateIfNeeded()
+        if env.settings.shortPressSeekBehavior == .multiStageShuttle {
+            let result = scrub.stepShuttle(
+                direction: forward ? .forward : .backward,
+                currentTime: coordinator.currentTime,
+                duration: dur,
+                onPreviewFrame: { [coordinator] target in
+                    await coordinator.seekToKeyframePreview(at: target)
                 }
+            )
+            if case .exitedToNormalPlayback = result {
+                commitActiveScrub()
             }
+        } else {
+            scrub.triggerShortStep(
+                direction: forward ? .forward : .backward,
+                stepSeconds: env.settings.shortSeekSeconds,
+                currentTime: coordinator.currentTime,
+                duration: dur,
+                onPreviewFrame: { [coordinator] target in
+                    await coordinator.seekToKeyframePreview(at: target)
+                },
+                onCommit: { finalTarget in
+                    exitScrubStateAndSeek(to: finalTarget, accurate: true)
+                }
+            )
         }
-        scrub.onRelease = { target in
-            scrubWorkerTask?.cancel()
-            scrubWorkerTask = nil
-            latestScrubTarget = nil
-            scrubRateBadge = nil
-            coordinator.seek(to: target, accurate: true)
-            Task {
-                await streamCache?.setScrubMode(false)
-                await proxy?.setScrubMode(false)
-            }
-        }
-        scrub.begin(direction: forward ? .forward : .backward, displayedTime: coordinator.currentTime, duration: dur, profile: mapProfile(env.settings.scrubMode))
     }
 
-    private func runSingleFlightScrubLoop() async {
-        while scrub.isScrubbing {
-            guard let target = latestScrubTarget else { break }
-            latestScrubTarget = nil
-            await coordinator.seekToKeyframePreview(at: target)
-            scrub.update(displayedTime: target)
-            previewTime = target
+    private func startScrub(forward: Bool) {
+        if env.settings.longPressSeekMode == .continuousFastPlay && forward && !scrub.isScrubbing {
+            fastPlayAnchorTime = coordinator.currentTime
+            fastPlayStartWallTime = CACurrentMediaTime()
+            fastPlayMeasuredRate = 3.0
+            isFastPlaying = true
+            coordinator.setMuted(true)
+            coordinator.setPlaybackRate(3.0)
+            coordinator.play()
+            return
         }
-        scrubWorkerTask = nil
+
+        let dur = max(1, coordinator.duration > 0 ? coordinator.duration : 7200)
+        enterScrubStateIfNeeded()
+        scrub.beginHold(
+            direction: forward ? .forward : .backward,
+            currentTime: coordinator.currentTime,
+            duration: dur,
+            profile: mapProfile(env.settings.scrubMode),
+            onPreviewFrame: { [coordinator] target in
+                await coordinator.seekToKeyframePreview(at: target)
+            }
+        )
     }
 
-    private func endScrub() { scrub.end() }
+    private func endScrub() {
+        if isFastPlaying {
+            isFastPlaying = false
+            coordinator.setMuted(false)
+            coordinator.setPlaybackRate(env.settings.playbackRate)
+            return
+        }
+        scrub.commitHold { finalTarget in
+            exitScrubStateAndSeek(to: finalTarget, accurate: false)
+        }
+    }
+
+    private func beginTouchpadScrub() {
+        let dur = max(1, coordinator.duration > 0 ? coordinator.duration : 7200)
+        enterScrubStateIfNeeded()
+        scrub.beginTouchpadPan(
+            currentTime: coordinator.currentTime,
+            duration: dur,
+            onPreviewFrame: { [coordinator] target in
+                await coordinator.seekToKeyframePreview(at: target)
+            }
+        )
+    }
+
+    private func endTouchpadScrub() {
+        scrub.commitTouchpadPan { finalTarget in
+            exitScrubStateAndSeek(to: finalTarget, accurate: true)
+        }
+    }
+
+    private func commitActiveScrub() {
+        scrub.commit(keepBarBriefly: false) { finalTarget in
+            exitScrubStateAndSeek(to: finalTarget, accurate: false)
+        }
+    }
 
     // MARK: - HUD 与定时刷新
 
@@ -514,29 +673,30 @@ public struct PlayerScreenView: View {
         historySaveTask = Task { @MainActor in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 10_000_000_000)
-                if coordinator.currentTime > 5 {
+                if env.settings.enableResumePlayback && coordinator.currentTime > 5 {
                     env.recordHistory(source: source, path: item.path, title: item.name, position: coordinator.currentTime, duration: coordinator.duration)
                 }
             }
         }
     }
 
-    private func saveCurrentProgress() {
-        guard !previewOpenHUD, coordinator.currentTime > 5 else { return }
-        env.recordHistory(source: source, path: activeEntry.path, title: activeEntry.name, position: coordinator.currentTime, duration: coordinator.duration)
+    private func saveCurrentProgress(positionOverride: Double? = nil) {
+        let pos = positionOverride ?? coordinator.currentTime
+        guard env.settings.enableResumePlayback, !previewOpenHUD, pos > 5 else { return }
+        env.recordHistory(source: source, path: activeEntry.path, title: activeEntry.name, position: pos, duration: coordinator.duration)
     }
 
     private func teardownTasks() {
         hudAutoHideTask?.cancel()
         statsPollTask?.cancel()
         historySaveTask?.cancel()
-        shortPressCommitTask?.cancel()
-        scrubWorkerTask?.cancel()
         nextEpisodeTimerTask?.cancel()
     }
 
     private func handlePlayerMenuBack() {
-        if activeDrawer != nil {
+        if scrub.isScrubbing {
+            commitActiveScrub()
+        } else if activeDrawer != nil {
             withAnimation(TVTokens.Motion.focus) { activeDrawer = nil }
         } else if nextEpisodeCountdown != nil {
             nextEpisodeTimerTask?.cancel()
@@ -549,8 +709,12 @@ public struct PlayerScreenView: View {
     }
 
     private func dismissPlayer() {
+        didDismiss = true
+        scrub.cancelAll()
+        teardownTasks()
         saveCurrentProgress()
         coordinator.shutdown()
+        Task { await proxy?.stop() }
         dismiss()
     }
 
@@ -579,23 +743,60 @@ public struct PlayerScreenView: View {
         .ignoresSafeArea()
     }
 
-    /// 紧凑底部独立快进胶囊（绝不给全屏贴毛玻璃！）
+    /// tvOS Liquid Glass 居中悬浮胶囊（带玻璃背景卡片）+ AuraTV 闭环同步倍速与偏移量
     private var compactBottomScrubBar: some View {
-        VStack {
+        let barColor = Color(cdHex: env.settings.scrubBarColorHex)
+        let displayTime = isFastPlaying ? coordinator.currentTime : scrub.synchronizedDisplayTime
+        let deltaSec = isFastPlaying ? (coordinator.currentTime - fastPlayAnchorTime) : scrub.synchronizedDeltaSeconds
+        let total = max(1.0, coordinator.duration)
+        let ratio = min(max(displayTime / total, 0), 1)
+        let sign = deltaSec >= 0 ? "+" : "-"
+        let deltaText = "\(sign)\(formatTime(abs(deltaSec)))"
+
+        let speedBadge: String = {
+            if isFastPlaying {
+                let rounded = fastPlayMeasuredRate.rounded()
+                let rateText = abs(fastPlayMeasuredRate - rounded) <= 0.18
+                    ? "\(max(1, Int(rounded)))x"
+                    : String(format: "%.1fx", max(0.5, fastPlayMeasuredRate))
+                return ">>> \(rateText)"
+            }
+            return scrub.speedLabel
+        }()
+
+        return VStack {
             Spacer()
-            HStack(spacing: 18) {
-                if let rate = scrubRateBadge {
-                    Text("\(Int(rate))x")
-                        .font(.system(size: 30, weight: .heavy, design: .monospaced))
-                        .foregroundStyle(TVTokens.Color.accent)
+            HStack(spacing: 16) {
+                if !speedBadge.isEmpty {
+                    Text(speedBadge)
+                        .font(.system(size: 26, weight: .heavy, design: .monospaced))
+                        .foregroundStyle(barColor)
                 }
-                Text(formatTime(previewTime))
-                    .font(.system(size: 26, weight: .bold, design: .monospaced))
-                ProgressView(value: previewTime, total: max(1, coordinator.duration))
-                    .tint(TVTokens.Color.accent)
-                    .frame(width: 480)
+                Text(deltaText)
+                    .font(.system(size: 20, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(TVTokens.Color.secondaryText)
+
+                Text(formatTime(displayTime))
+                    .font(.system(size: 24, weight: .bold, design: .monospaced))
+
+                GeometryReader { proxy in
+                    let fillWidth = max(0, proxy.size.width * ratio)
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.22))
+                        Capsule()
+                            .fill(barColor)
+                            .frame(width: fillWidth)
+                        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                            .fill(Color.white)
+                            .frame(width: 3, height: 11)
+                            .offset(x: max(0, min(proxy.size.width - 3, fillWidth - 1.5)))
+                    }
+                }
+                .frame(width: 440, height: 7)
+
                 Text(formatTime(coordinator.duration))
-                    .font(.system(size: 22, weight: .medium, design: .monospaced))
+                    .font(.system(size: 20, weight: .medium, design: .monospaced))
                     .foregroundStyle(TVTokens.Color.secondaryText)
             }
             .padding(.horizontal, 28)
@@ -760,8 +961,18 @@ public struct PlayerScreenView: View {
                 .font(TVTokens.Typography.sectionTitle)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 760)
-            Button("返回", action: dismissPlayer)
-                .tvAdaptiveGlassButtonStyle(prominent: true)
+            AdaptiveGlassContainer(spacing: 20) {
+                HStack(spacing: 20) {
+                    Button("重试播放") {
+                        Task { await recoverAfterForeground() }
+                    }
+                    .tvAdaptiveGlassButtonStyle(prominent: true)
+
+                    Button("返回", action: dismissPlayer)
+                        .tvAdaptiveGlassButtonStyle()
+                }
+                .focusSection()
+            }
         }
         .padding(40)
         .tvGlassSurface(cornerRadius: TVTokens.Radius.panel)
@@ -857,6 +1068,7 @@ private struct PlaybackContainerView: UIViewRepresentable {
 
 private struct RemoteCaptureRepresentable: UIViewRepresentable {
     let isCaptureEnabled: Bool
+    let enableTouchpadScrub: Bool
     let onShortPress: (Bool) -> Void
     let onLongPressBegan: (Bool) -> Void
     let onLongPressEnded: () -> Void
@@ -880,6 +1092,7 @@ private struct RemoteCaptureRepresentable: UIViewRepresentable {
     }
 
     private func configure(_ view: RemoteKeyCaptureView) {
+        view.enableTouchpadScrub = enableTouchpadScrub
         view.onShortPress = onShortPress
         view.onLongPressBegan = onLongPressBegan
         view.onLongPressEnded = onLongPressEnded
@@ -890,5 +1103,23 @@ private struct RemoteCaptureRepresentable: UIViewRepresentable {
         view.onPlayPause = onPlayPause
         view.onSelect = onSelect
         view.onShowHUD = onShowHUD
+    }
+}
+
+
+private extension Color {
+    init(cdHex hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "# \t\n"))
+        guard cleaned.count == 6, let rgb = UInt64(cleaned, radix: 16) else {
+            self = TVTokens.Color.accent
+            return
+        }
+        self.init(
+            .sRGB,
+            red: Double((rgb >> 16) & 0xFF) / 255.0,
+            green: Double((rgb >> 8) & 0xFF) / 255.0,
+            blue: Double(rgb & 0xFF) / 255.0,
+            opacity: 1.0
+        )
     }
 }

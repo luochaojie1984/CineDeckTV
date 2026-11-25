@@ -82,6 +82,20 @@ public final class AVPlayerEngineAdapter: PlayerEngine {
         }
     }
 
+    public func seekToKeyframePreview(at time: TimeInterval) async -> TimeInterval {
+        guard let player else { return time }
+        let clamped = duration > 0 ? min(max(0, time), max(0, duration - 0.5)) : max(0, time)
+        let cm = CMTime(seconds: clamped, preferredTimescale: 600)
+        let tol = CMTime(seconds: 1.0, preferredTimescale: 600)
+        _ = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+            player.seek(to: cm, toleranceBefore: tol, toleranceAfter: tol) { done in
+                cont.resume(returning: done)
+            }
+        }
+        let actual = currentTime
+        return (actual.isFinite && actual >= 0) ? actual : clamped
+    }
+
     public func setPlaybackRate(_ rate: Double) {
         targetRate = Float(min(4.0, max(0.25, rate)))
         if isPlaying {

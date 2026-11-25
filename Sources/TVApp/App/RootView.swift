@@ -175,8 +175,8 @@ struct RootView: View {
 }
 
 struct PlaybackTarget: Identifiable {
+    let id = UUID()
     let source: MediaSourceConfig
     let entry: VFSEntry
     let resumePosition: Double
-    var id: String { "\(source.id.uuidString)/\(entry.path)" }
 }

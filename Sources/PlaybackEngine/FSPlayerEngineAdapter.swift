@@ -24,6 +24,7 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
     private var observerTokens: [NSObjectProtocol] = []
     private var seekPreviewContinuation: CheckedContinuation<Void, Never>?
     private var seekPreviewTimeoutTask: Task<Void, Never>?
+    private var pendingResumeSeekTime: TimeInterval?
     private var didReportTerminalFinish = false
 
     public init() {}
@@ -54,23 +55,22 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         fsOptions.setPlayerOptionIntValue(0, forKey: "enable-accurate-seek")
         fsOptions.setPlayerOptionIntValue(800, forKey: "accurate-seek-timeout")
         fsOptions.setPlayerOptionIntValue(Int64(max(16 * 1024 * 1024, min(64 * 1024 * 1024, options.cacheBytes / 2))), forKey: "max-buffer-size")
-        fsOptions.setFormatOptionIntValue(512 * 1024, forKey: "probesize")
-        fsOptions.setFormatOptionIntValue(500_000, forKey: "analyzeduration")
+        fsOptions.setFormatOptionIntValue(2 * 1024 * 1024, forKey: "probesize")
+        fsOptions.setFormatOptionIntValue(2_000_000, forKey: "analyzeduration")
         fsOptions.setFormatOptionIntValue(15_000_000, forKey: "timeout")
         fsOptions.setFormatOptionValue("fastseek", forKey: "fflags")
         fsOptions.setFormatOptionIntValue(1, forKey: "reconnect")
         fsOptions.setFormatOptionValue("1", forKey: "http_persistent")
 
-        if startAt > 0 {
-            fsOptions.setPlayerOptionIntValue(Int64(startAt * 1000), forKey: "seek-at-start")
-        }
+        // Open cleanly from t=0 and seek right after prepared to avoid seek-at-start resume hangs.
+        self.pendingResumeSeekTime = startAt > 0.5 ? startAt : nil
 
         let metalView = FSVideoRenderView.createMetalRenderView()
         let fsPlayer = FSPlayer(content: url, options: fsOptions, videoRendering: metalView)
         fsPlayer.shouldAutoplay = true
         fsPlayer.playbackRate = Float(options.playbackRate)
         fsPlayer.scalingMode = mapScaling(options.scaling)
-        fsPlayer.enableAccurateSeek(true)
+        fsPlayer.enableAccurateSeek(false)
 
         self.renderView = metalView
         self.player = fsPlayer
@@ -90,9 +90,9 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         player.currentPlaybackTime = clamped
     }
 
-    /// 单飞关键帧预览跳转：发送快速帧 seek 后等待首帧渲染通知（带 350ms 防卡死超时保护）。
-    public func seekToKeyframePreview(at time: TimeInterval, timeoutMs: UInt64 = 350) async {
-        guard let player else { return }
+    /// 单飞关键帧预览跳转：发送快速帧 seek 后等待首帧渲染通知（带 260ms 防卡死超时保护），返回真实渲染时刻。
+    public func seekToKeyframePreview(at time: TimeInterval, timeoutMs: UInt64 = 260) async -> TimeInterval {
+        guard let player else { return time }
         completeSeekPreview()
         player.enableAccurateSeek(false)
         let clamped = duration > 0 ? min(max(0, time), max(0, duration - 0.5)) : max(0, time)
@@ -105,6 +105,8 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
                 self?.completeSeekPreview()
             }
         }
+        let actual = player.currentPlaybackTime
+        return (actual.isFinite && actual >= 0) ? actual : clamped
     }
 
     public func stepToNextFrame() {
@@ -218,6 +220,7 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
             NotificationCenter.default.removeObserver(token)
         }
         observerTokens.removeAll()
+        pendingResumeSeekTime = nil
         player?.shutdownSync(false)
         player = nil
         renderView?.removeFromSuperview()
@@ -233,9 +236,16 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
 
         observerTokens.append(nc.addObserver(forName: .FSPlayerIsPreparedToPlay, object: fsPlayer, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard let self, let player = self.player else { return }
+                guard let self, let player = self.player, player === fsPlayer else { return }
                 self.isPrepared = true
                 self.isBuffering = false
+                if let resumeAt = self.pendingResumeSeekTime {
+                    self.pendingResumeSeekTime = nil
+                    let dur = self.duration
+                    let target = dur > 0 ? min(max(0, resumeAt), max(0, dur - 0.5)) : max(0, resumeAt)
+                    player.enableAccurateSeek(false)
+                    player.currentPlaybackTime = target
+                }
                 self.onTimeUpdate?(self.currentTime, self.duration)
                 let lists = self.trackLists()
                 self.onTracksChanged?(lists.audio, lists.subtitles)
@@ -257,8 +267,9 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
 
         observerTokens.append(nc.addObserver(forName: .FSPlayerFirstVideoFrameRendered, object: fsPlayer, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.isBuffering = false
-                self?.onFirstFrameRendered?()
+                guard let self, self.player === fsPlayer else { return }
+                self.isBuffering = false
+                self.onFirstFrameRendered?()
             }
         })
 

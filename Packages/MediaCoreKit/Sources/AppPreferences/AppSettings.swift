@@ -45,6 +45,57 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var preferSimplifiedChineseSubtitle: Bool
     public var externalSubtitleDirectories: [String]
     public var rememberLastDirectory: Bool
+    public enum ShortPressSeekBehavior: String, CaseIterable, Codable, Sendable {
+        case fixedStepJump
+        case multiStageShuttle
+
+        public var displayName: String {
+            switch self {
+            case .fixedStepJump: return "定长跳秒"
+            case .multiStageShuttle: return "多级倍速穿梭"
+            }
+        }
+    }
+
+    public enum LongPressSeekMode: String, CaseIterable, Codable, Sendable {
+        case mxLiveKeyframeScrub
+        case continuousFastPlay
+
+        public var displayName: String {
+            switch self {
+            case .mxLiveKeyframeScrub: return "实时出画快进"
+            case .continuousFastPlay: return "连续倍速播放"
+            }
+        }
+    }
+
+    public enum ScrubBarColorPreset: String, CaseIterable, Codable, Sendable {
+        case skyBlue = "#38BDF8"
+        case appleBlue = "#0A84FF"
+        case emerald = "#34D399"
+        case amberGold = "#FBBF24"
+        case coralRed = "#FB7185"
+        case pureWhite = "#FFFFFF"
+
+        public var displayName: String {
+            switch self {
+            case .skyBlue: return "极光蓝"
+            case .appleBlue: return "苹果蓝"
+            case .emerald: return "翠绿"
+            case .amberGold: return "琥珀金"
+            case .coralRed: return "珊瑚红"
+            case .pureWhite: return "纯白"
+            }
+        }
+    }
+
+    public var shortSeekSeconds: Double
+    public var shortPressSeekBehavior: ShortPressSeekBehavior
+    public var longPressSeekMode: LongPressSeekMode
+    public var enableTouchpadScrub: Bool
+    public var enableResumePlayback: Bool
+    public var scrubBarColorHex: String
+
     public var subtitleStyle: SubtitleStyleConfig
     public var lastVisitedPaths: [String: String]
 
@@ -91,6 +142,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         preferSimplifiedChineseSubtitle: Bool = true,
         externalSubtitleDirectories: [String] = ["Subs", "Subtitles", "Subtitle", "字幕"],
         rememberLastDirectory: Bool = true,
+        shortSeekSeconds: Double = 10,
+        shortPressSeekBehavior: ShortPressSeekBehavior = .fixedStepJump,
+        longPressSeekMode: LongPressSeekMode = .mxLiveKeyframeScrub,
+        enableTouchpadScrub: Bool = true,
+        enableResumePlayback: Bool = true,
+        scrubBarColorHex: String = ScrubBarColorPreset.skyBlue.rawValue,
         subtitleStyle: SubtitleStyleConfig = SubtitleStyleConfig(),
         lastVisitedPaths: [String: String] = [:]
     ) {
@@ -104,6 +161,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         self.preferSimplifiedChineseSubtitle = preferSimplifiedChineseSubtitle
         self.externalSubtitleDirectories = externalSubtitleDirectories
         self.rememberLastDirectory = rememberLastDirectory
+        self.shortSeekSeconds = shortSeekSeconds
+        self.shortPressSeekBehavior = shortPressSeekBehavior
+        self.longPressSeekMode = longPressSeekMode
+        self.enableTouchpadScrub = enableTouchpadScrub
+        self.enableResumePlayback = enableResumePlayback
+        self.scrubBarColorHex = scrubBarColorHex
         self.subtitleStyle = subtitleStyle
         self.lastVisitedPaths = lastVisitedPaths
     }
@@ -120,6 +183,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         preferSimplifiedChineseSubtitle = try c.decodeIfPresent(Bool.self, forKey: .preferSimplifiedChineseSubtitle) ?? true
         externalSubtitleDirectories = try c.decodeIfPresent([String].self, forKey: .externalSubtitleDirectories) ?? ["Subs", "Subtitles", "Subtitle", "字幕"]
         rememberLastDirectory = try c.decodeIfPresent(Bool.self, forKey: .rememberLastDirectory) ?? true
+        shortSeekSeconds = try c.decodeIfPresent(Double.self, forKey: .shortSeekSeconds) ?? 10
+        shortPressSeekBehavior = try c.decodeIfPresent(ShortPressSeekBehavior.self, forKey: .shortPressSeekBehavior) ?? .fixedStepJump
+        longPressSeekMode = try c.decodeIfPresent(LongPressSeekMode.self, forKey: .longPressSeekMode) ?? .mxLiveKeyframeScrub
+        enableTouchpadScrub = try c.decodeIfPresent(Bool.self, forKey: .enableTouchpadScrub) ?? true
+        enableResumePlayback = try c.decodeIfPresent(Bool.self, forKey: .enableResumePlayback) ?? true
+        scrubBarColorHex = try c.decodeIfPresent(String.self, forKey: .scrubBarColorHex) ?? ScrubBarColorPreset.skyBlue.rawValue
         subtitleStyle = try c.decodeIfPresent(SubtitleStyleConfig.self, forKey: .subtitleStyle) ?? SubtitleStyleConfig()
         lastVisitedPaths = try c.decodeIfPresent([String: String].self, forKey: .lastVisitedPaths) ?? [:]
     }

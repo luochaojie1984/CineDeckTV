@@ -85,6 +85,71 @@ public struct AppSettingsView: View {
                             }
                         }
                     }
+                    section("短按左右键") {
+                        choiceRow(
+                            keys: AppSettings.ShortPressSeekBehavior.allCases.map { ($0, $0.displayName) },
+                            selected: env.settings.shortPressSeekBehavior
+                        ) { value in
+                            env.update(settings: mutated { $0.shortPressSeekBehavior = value })
+                        }
+                    }
+                    section("短按跳秒步长") {
+                        choiceRow(
+                            keys: [(5.0, "5 秒"), (10.0, "10 秒"), (15.0, "15 秒"), (30.0, "30 秒"), (60.0, "60 秒")],
+                            selected: env.settings.shortSeekSeconds
+                        ) { value in
+                            env.update(settings: mutated { $0.shortSeekSeconds = value })
+                        }
+                    }
+                    section("长按快进模式") {
+                        choiceRow(
+                            keys: AppSettings.LongPressSeekMode.allCases.map { ($0, $0.displayName) },
+                            selected: env.settings.longPressSeekMode
+                        ) { value in
+                            env.update(settings: mutated { $0.longPressSeekMode = value })
+                        }
+                    }
+                    section("触控板划屏快进") {
+                        choiceRow(
+                            keys: [(true, "开"), (false, "关")],
+                            selected: env.settings.enableTouchpadScrub
+                        ) { value in
+                            env.update(settings: mutated { $0.enableTouchpadScrub = value })
+                        }
+                    }
+                    section("记忆断点续播") {
+                        choiceRow(
+                            keys: [(true, "开"), (false, "关")],
+                            selected: env.settings.enableResumePlayback
+                        ) { value in
+                            env.update(settings: mutated { $0.enableResumePlayback = value })
+                        }
+                    }
+                    section("快进胶囊高亮色") {
+                        AdaptiveGlassContainer(spacing: 12) {
+                            HStack(spacing: 12) {
+                                ForEach(AppSettings.ScrubBarColorPreset.allCases, id: \.self) { preset in
+                                    let selected = env.settings.scrubBarColorHex.caseInsensitiveCompare(preset.rawValue) == .orderedSame
+                                    Button {
+                                        env.update(settings: mutated { $0.scrubBarColorHex = preset.rawValue })
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            Circle()
+                                                .fill(Color(cdHex: preset.rawValue))
+                                                .frame(width: 12, height: 12)
+                                            Text(preset.displayName)
+                                                .lineLimit(1)
+                                            if selected { Image(systemName: "checkmark.circle.fill") }
+                                        }
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 8)
+                                    }
+                                    .tvAdaptiveGlassButtonStyle(prominent: selected)
+                                    .tint(selected ? Color(cdHex: preset.rawValue) : (nil as Color?))
+                                }
+                            }
+                        }
+                    }
                 }
                 .padding(.horizontal, 48)
                 .padding(.vertical, 36)
@@ -129,5 +194,23 @@ public struct AppSettingsView: View {
                 }
             }
         }
+    }
+}
+
+
+private extension Color {
+    init(cdHex hex: String) {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "# \t\n"))
+        guard cleaned.count == 6, let rgb = UInt64(cleaned, radix: 16) else {
+            self = TVTokens.Color.accent
+            return
+        }
+        self.init(
+            .sRGB,
+            red: Double((rgb >> 16) & 0xFF) / 255.0,
+            green: Double((rgb >> 8) & 0xFF) / 255.0,
+            blue: Double(rgb & 0xFF) / 255.0,
+            opacity: 1.0
+        )
     }
 }

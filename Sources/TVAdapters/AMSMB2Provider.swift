@@ -207,7 +207,13 @@ public final class AMSMB2Provider: VFSProvider, @unchecked Sendable {
             let attrs = try await manager.attributesOfItem(atPath: resolved.relativePath)
             return (attrs[.fileSizeKey] as? NSNumber)?.int64Value ?? 0
         } catch {
-            throw Self.classifySMBError(error, target: path)
+            try await ensureShareConnected(resolved.share, using: manager, forceReconnect: true)
+            do {
+                let attrs = try await manager.attributesOfItem(atPath: resolved.relativePath)
+                return (attrs[.fileSizeKey] as? NSNumber)?.int64Value ?? 0
+            } catch {
+                throw Self.classifySMBError(error, target: path)
+            }
         }
     }
 
@@ -222,7 +228,13 @@ public final class AMSMB2Provider: VFSProvider, @unchecked Sendable {
             let raf = try await manager.openRandomAccessFile(shareName: resolved.share, atPath: resolved.relativePath)
             return SMBPersistentChunkSource(file: raf)
         } catch {
-            throw Self.classifySMBError(error, target: path)
+            try await ensureShareConnected(resolved.share, using: manager, forceReconnect: true)
+            do {
+                let raf = try await manager.openRandomAccessFile(shareName: resolved.share, atPath: resolved.relativePath)
+                return SMBPersistentChunkSource(file: raf)
+            } catch {
+                throw Self.classifySMBError(error, target: path)
+            }
         }
     }
 

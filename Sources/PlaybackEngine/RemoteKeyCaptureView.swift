@@ -6,6 +6,7 @@ import UIKit
 @MainActor
 public final class RemoteKeyCaptureView: UIView {
     public var isCaptureEnabled = true { didSet { if !isCaptureEnabled { resetPress() } } }
+    public var enableTouchpadScrub = true
 
     public var onShortPress: ((_ forward: Bool) -> Void)?
     public var onLongPressBegan: ((_ forward: Bool) -> Void)?
@@ -40,7 +41,7 @@ public final class RemoteKeyCaptureView: UIView {
     public override var canBecomeFocused: Bool { true }
 
     @objc private func handleTouchpadPan(_ recognizer: UIPanGestureRecognizer) {
-        guard isCaptureEnabled else { return }
+        guard isCaptureEnabled, enableTouchpadScrub else { return }
         let translationX = recognizer.translation(in: self).x
         switch recognizer.state {
         case .began:
