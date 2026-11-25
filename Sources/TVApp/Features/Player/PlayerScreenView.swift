@@ -49,7 +49,6 @@ public struct PlayerScreenView: View {
             if isPreparing { ProgressView().controlSize(.large) }
             if let errorText { errorPanel(errorText) }
         }
-        .onAppear { keys.bind(keysModel: keys) }
         .task { await prepare() }
         .onDisappear { teardown() }
     }
@@ -193,7 +192,6 @@ public struct PlayerScreenView: View {
         keys.onMenu = { dismiss() }
         keys.onPlayPause = { coordinator.isPlaying ? coordinator.pause() : coordinator.play() }
         keys.onSelect = { showingHUD.toggle() }
-        keys.startPublisher = { true }
     }
 
     private func profile(for mode: AppSettings.ScrubMode) -> ScrubProfile {
@@ -269,9 +267,6 @@ final class RemoteKeyCaptureModel {
     var onMenu: (() -> Void)?
     var onPlayPause: (() -> Void)?
     var onSelect: (() -> Void)?
-    var startPublisher: ((Bool) -> Void)?
-
-    func bind(keysModel: RemoteKeyCaptureModel) {}
 }
 
 struct RemoteKeyLayer: UIViewRepresentable {
