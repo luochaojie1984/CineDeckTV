@@ -68,6 +68,20 @@ public struct PlayerScreenView: View {
 
     private var activeEntry: VFSEntry { currentEntry ?? entry }
 
+    private var effectiveOverlaySubtitleStyle: SubtitleStyleConfig {
+        var copy = subtitleStyle
+        if showHUD {
+            copy.bottomInset = max(subtitleStyle.bottomInset, 270)
+        }
+        return copy
+    }
+
+    private var previewOverlaySubtitleStyle: SubtitleStyleConfig {
+        var copy = subtitleStyle
+        copy.bottomInset = 310
+        return copy
+    }
+
     public var body: some View {
         ZStack {
             if previewOpenHUD {
@@ -78,20 +92,14 @@ public struct PlayerScreenView: View {
             }
 
             if coordinator.activeEngine == .avplayer && !overlayCues.isEmpty && activeDrawer == nil {
-                var effectiveStyle = subtitleStyle
-                if showHUD {
-                    effectiveStyle.bottomInset = max(subtitleStyle.bottomInset, 270)
-                }
-                SubtitleOverlayView(cues: overlayCues, currentTime: coordinator.currentTime, style: effectiveStyle)
+                SubtitleOverlayView(cues: overlayCues, currentTime: coordinator.currentTime, style: effectiveOverlaySubtitleStyle)
             }
 
             if previewOpenHUD {
-                var previewSubStyle = subtitleStyle
-                previewSubStyle.bottomInset = 310
                 SubtitleOverlayView(
                     cues: [SubtitleCue(start: 0, end: 99999, text: "不要温顺地走进那个良夜 —— 外挂 ASS / GB18030 自动转码就绪")],
                     currentTime: 100,
-                    style: previewSubStyle
+                    style: previewOverlaySubtitleStyle
                 )
                 .padding(.trailing, activeDrawer != nil ? 700 : 0)
             }
