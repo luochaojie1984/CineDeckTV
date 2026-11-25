@@ -111,7 +111,7 @@ public actor ReadAheadStreamCache {
             }
             evictIfNeeded()
         }
-        var out = Data(capacity: upper)
+        var out = Data(capacity: Int(upper))
         for idx in indexes {
             guard let chunk = chunks[idx] else { continue }
             let chunkStart = idx * Int64(effectiveChunkSize)

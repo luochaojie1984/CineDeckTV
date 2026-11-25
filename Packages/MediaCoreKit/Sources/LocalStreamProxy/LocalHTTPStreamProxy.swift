@@ -87,7 +87,8 @@ public actor LocalHTTPStreamProxy {
 
     private func respond(_ connection: NWConnection, request: Data) {
         let head = String(decoding: request.prefix(4096), as: UTF8.self)
-        let firstLine = head.split(separator: "\r\n").first.map(String.init) ?? ""
+        let lines = head.components(separatedBy: "\r\n")
+        let firstLine = lines.first ?? ""
         let parts = firstLine.split(separator: " ")
         guard parts.count >= 2 else {
             connection.cancel()
@@ -98,7 +99,7 @@ public actor LocalHTTPStreamProxy {
             sendStatus(connection, code: 404, reason: "Not Found")
             return
         }
-        let rangeHeader = head.split(separator: "\r\n")
+        let rangeHeader = lines
             .first { $0.lowercased().hasPrefix("range:") }
             .map { String($0.dropFirst(6)).trimmingCharacters(in: .whitespaces) }
 

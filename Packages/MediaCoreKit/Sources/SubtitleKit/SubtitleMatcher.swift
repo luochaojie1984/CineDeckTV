@@ -43,8 +43,8 @@ public enum SubtitleMatcher {
 
     public static func language(of fileName: String) -> String? {
         let lower = fileName.lowercased()
-        for (code, tags) in languageTags where tags.contains(where: { lower.contains($0) }) {
-            return code
+        for (code, tags) in languageTags {
+            if tags.contains(where: { lower.contains($0) }) { return code }
         }
         return nil
     }
