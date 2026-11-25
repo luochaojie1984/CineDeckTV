@@ -38,6 +38,7 @@ public final class ScrubFrameLayerView: UIView {
 }
 
 public struct ScrubFramePresenter: UIViewRepresentable {
+    @MainActor
     public final class Coordinator {
         public let view = ScrubFrameLayerView()
     }
