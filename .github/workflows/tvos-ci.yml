@@ -1,0 +1,81 @@
+name: CineDeckTV CI (Ubuntu Tests + tvOS Unsigned IPA)
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests-ubuntu:
+    name: MediaCoreKit tests (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Swift toolchain
+        run: swift --version
+      - name: Test MediaCoreKit on Linux
+        working-directory: Packages/MediaCoreKit
+        run: swift test --parallel
+
+  build-tvos-unsigned-ipa:
+    name: tvOS Release build + unsigned IPA
+    needs: core-tests-ubuntu
+    runs-on: xcode-27
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode & tvOS SDK
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i appletvos || true
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build tvOS Release (unsigned)
+        run: |
+          xcodebuild clean build \
+            -project CineDeckTV.xcodeproj \
+            -scheme CineDeckTV \
+            -sdk appletvos \
+            -destination 'generic/platform=tvOS' \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_IDENTITY="" \
+            SYMROOT="$(pwd)/build"
+      - name: Verify embedded FSPlayer.framework and Info.plist keys
+        run: |
+          set -euo pipefail
+          APP="build/Release-appletvos/CineDeckTV.app"
+          test -d "$APP" || { echo "::error::app bundle missing"; exit 1; }
+          test -d "$APP/Frameworks/FSPlayer.framework" || { echo "::error::FSPlayer.framework not embedded"; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$APP/Info.plist" || { echo "::error::NSLocalNetworkUsageDescription missing"; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :NSBonjourServices" "$APP/Info.plist" || { echo "::error::NSBonjourServices missing"; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist"
+          echo "--- Frameworks ---"
+          ls -la "$APP/Frameworks"
+          echo "--- FSPlayer slice ---"
+          ls "$APP/Frameworks/FSPlayer.framework" | head
+      - name: Package unsigned IPA
+        run: |
+          rm -rf Payload CineDeckTV-Unsigned.ipa
+          mkdir -p Payload
+          cp -R "build/Release-appletvos/CineDeckTV.app" Payload/
+          zip -qry "CineDeckTV-Unsigned.ipa" Payload
+          rm -rf Payload
+          ls -lh CineDeckTV-Unsigned.ipa
+          sha256sum CineDeckTV-Unsigned.ipa | tee CineDeckTV-Unsigned.ipa.sha256
+      - name: Upload IPA + checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: CineDeckTV-Unsigned-tvOS-IPA
+          path: |
+            CineDeckTV-Unsigned.ipa
+            CineDeckTV-Unsigned.ipa.sha256
+          retention-days: 30

@@ -1,0 +1,52 @@
+name: CineDeckTV
+options:
+  bundleIdPrefix: local.personal
+  deploymentTarget:
+    tvOS: "17.0"
+  createIntermediateGroups: true
+
+packages:
+  MediaCoreKit:
+    path: Packages/MediaCoreKit
+  FSPlayer:
+    # Step 0 实测：GitHub 最新稳定 tag = 1.1.3（1.1.4-beta-1 为 beta，不采用）
+    url: https://github.com/debugly/FSPlayer-SPM.git
+    exactVersion: 1.1.3
+
+targets:
+  CineDeckTV:
+    type: application
+    platform: tvOS
+    sources:
+      - path: Sources/TVApp
+      - path: Sources/PlaybackEngine
+    dependencies:
+      - package: MediaCoreKit
+        product: NetworkVFS
+      - package: MediaCoreKit
+        product: LocalStreamProxy
+      - package: MediaCoreKit
+        product: SubtitleKit
+      - package: MediaCoreKit
+        product: AppPreferences
+      # 二进制 XCFramework：禁止 embed: true
+      - package: FSPlayer
+        product: FSPlayer
+    info:
+      path: Sources/TVApp/Info.plist
+      properties:
+        CFBundleDisplayName: CineDeckTV
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        NSLocalNetworkUsageDescription: "用于发现并访问局域网内的 SMB / WebDAV 影音服务器"
+        NSBonjourServices:
+          - "_smb._tcp"
+          - "_webdav._tcp"
+          - "_webdavs._tcp"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: local.personal.cinedecktv
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "3"
+        SWIFT_STRICT_CONCURRENCY: complete
+        ENABLE_MODULE_VERIFIER: NO

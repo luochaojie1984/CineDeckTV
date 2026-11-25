@@ -1,0 +1,19 @@
+# Xcode / build
+build/
+sim-build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+CineDeckTV.xcodeproj/
+
+# Dependencies fetched by scripts
+Vendor/
+
+# Artifacts
+dist/*.ipa
+.screenshots/
+
+# Local / secrets
+.env
+*.local.xcconfig
+.DS_Store
