@@ -142,21 +142,21 @@ public actor AMSMB2Provider: VFSProvider {
         defer { connection.cancel() }
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
+                let box = ResumeBox()
                 try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    var resumed = false
                     connection.stateUpdateHandler = { state in
-                        guard !resumed else { return }
                         switch state {
                         case .ready:
-                            resumed = true
-                            continuation.resume()
+                            if box.claim() { continuation.resume() }
                         case .failed(let error):
-                            resumed = true
-                            continuation.resume(throwing: VFSError.transport("TCP 预检失败：\(error.localizedDescription)"))
+                            if box.claim() {
+                                continuation.resume(throwing: VFSError.transport("TCP 预检失败：\(error.localizedDescription)"))
+                            }
                         case .waiting(let error):
-                            resumed = true
-                            connection.cancel()
-                            continuation.resume(throwing: VFSError.transport("无法连接 \(host):\(port)（\(error.localizedDescription)）"))
+                            if box.claim() {
+                                connection.cancel()
+                                continuation.resume(throwing: VFSError.transport("无法连接 \(host):\(port)（\(error.localizedDescription)）"))
+                            }
                         default:
                             break
                         }
@@ -190,6 +190,20 @@ public actor AMSMB2Provider: VFSProvider {
         if text.contains("STATUS_BAD_NETWORK_NAME") { return .notFound(path) }
         if text.contains("STATUS_OBJECT_NAME_NOT_FOUND") { return .notFound(path) }
         return .transport(text)
+    }
+}
+
+/// 保证 continuation 只被 resume 一次（NWConnection 的状态回调可能在多个队列触发）。
+private final class ResumeBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var resumed = false
+
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if resumed { return false }
+        resumed = true
+        return true
     }
 }
 
