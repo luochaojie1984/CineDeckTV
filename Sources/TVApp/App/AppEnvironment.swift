@@ -47,8 +47,9 @@ public final class AppEnvironment: ObservableObject {
         self.previewScenario = previewScenario
         if previewScenario != nil {
             self.settings = AppSettings()
-            self.sources = Self.makePreviewSources()
-            self.history = Self.makePreviewHistory(sources: self.sources)
+            let demoSources = Self.makePreviewSources()
+            self.sources = demoSources
+            self.history = Self.makePreviewHistory(sources: demoSources)
         } else {
             self.settings = settingsStore.load()
             self.sources = sourceStore.load()
