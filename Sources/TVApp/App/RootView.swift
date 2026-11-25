@@ -14,21 +14,109 @@ struct RootView: View {
     @EnvironmentObject private var env: AppEnvironment
     @State private var selectedTab: MainTab = .home
     @State private var selectedSource: MediaSourceConfig?
+    @State private var browserNavPath: [String] = []
+    @State private var isSourcesModalOpen = false
     @State private var playingTarget: PlaybackTarget?
     @State private var pendingBonjourHost: String?
     @State private var pendingBonjourKind: MediaSourceKind = .smb
     @State private var didApplyPreviewScenario = false
 
-    var body: some View {
-        Group {
-            if #available(tvOS 18.0, *) {
-                mainTabView
-                    .tabViewStyle(.sidebarAdaptable)
-            } else {
-                mainTabView
-            }
+    private var shouldInterceptRootMenuBack: Bool {
+        guard playingTarget == nil, !isSourcesModalOpen else { return false }
+        switch selectedTab {
+        case .home:
+            return false // 首页按返回可正常退出到 Apple TV 桌面
+        case .browser:
+            // 子目录由 NavigationStack 自动出栈，只有在共享盘根目录按返回才回到首页
+            return browserNavPath.isEmpty
+        case .history, .sources, .settings:
+            return true
         }
-        .background(TVTokens.backgroundGradient.ignoresSafeArea())
+    }
+
+    var body: some View {
+        ZStack {
+            TVTokens.backgroundGradient.ignoresSafeArea()
+
+            TabView(selection: $selectedTab) {
+                HomeSpotlightView(
+                    onOpenSource: { source in
+                        selectedSource = source
+                        selectedTab = .browser
+                    },
+                    onOpenSourcesManager: {
+                        selectedTab = .sources
+                    },
+                    onResumeRecord: { record in
+                        resumePlayback(for: record)
+                    },
+                    onSelectBonjour: { host, kind in
+                        pendingBonjourHost = host
+                        pendingBonjourKind = kind
+                        selectedTab = .sources
+                    }
+                )
+                .tabItem { Label("首页", systemImage: "sparkles.tv") }
+                .tag(MainTab.home)
+
+                DriveBrowserView(
+                    selectedSource: $selectedSource,
+                    navPath: $browserNavPath,
+                    onPlay: { source, entry in
+                        playingTarget = PlaybackTarget(
+                            source: source,
+                            entry: entry,
+                            resumePosition: env.resumePosition(source: source, path: entry.path) ?? 0
+                        )
+                    },
+                    onOpenSourcesManager: {
+                        selectedTab = .sources
+                    },
+                    onBackToHome: {
+                        selectedTab = .home
+                    }
+                )
+                .tabItem { Label("共享盘", systemImage: "externaldrive.connected.to.line.below") }
+                .tag(MainTab.browser)
+
+                HistoryView(
+                    onResumeRecord: { record in
+                        resumePlayback(for: record)
+                    },
+                    onOpenSource: { source in
+                        selectedSource = source
+                        selectedTab = .browser
+                    }
+                )
+                .tabItem { Label("观看历史", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90") }
+                .tag(MainTab.history)
+
+                SourceManagerView(
+                    prefillHost: $pendingBonjourHost,
+                    prefillKind: $pendingBonjourKind,
+                    isModalPresented: $isSourcesModalOpen,
+                    onOpenSource: { source in
+                        selectedSource = source
+                        selectedTab = .browser
+                    }
+                )
+                .tabItem { Label("服务器", systemImage: "server.rack") }
+                .tag(MainTab.sources)
+
+                AppSettingsView()
+                    .tabItem { Label("设置", systemImage: "slider.horizontal.3") }
+                    .tag(MainTab.settings)
+            }
+            .tabViewStyle(.automatic)
+            .background(
+                TVMenuBackOverlay(isEnabled: shouldInterceptRootMenuBack) {
+                    withAnimation(TVTokens.Motion.focus) {
+                        selectedTab = .home
+                    }
+                }
+                .allowsHitTesting(false)
+            )
+        }
         .fullScreenCover(item: $playingTarget) { target in
             PlayerScreenView(
                 source: target.source,
@@ -50,74 +138,6 @@ struct RootView: View {
             } else if selectedSource == nil {
                 selectedSource = updated.first
             }
-        }
-    }
-
-    @ViewBuilder
-    private var mainTabView: some View {
-        TabView(selection: $selectedTab) {
-            HomeSpotlightView(
-                onOpenSource: { source in
-                    selectedSource = source
-                    selectedTab = .browser
-                },
-                onOpenSourcesManager: {
-                    selectedTab = .sources
-                },
-                onResumeRecord: { record in
-                    resumePlayback(for: record)
-                },
-                onSelectBonjour: { host, kind in
-                    pendingBonjourHost = host
-                    pendingBonjourKind = kind
-                    selectedTab = .sources
-                }
-            )
-            .tabItem { Label("首页", systemImage: "sparkles.tv") }
-            .tag(MainTab.home)
-
-            DriveBrowserView(
-                selectedSource: $selectedSource,
-                onPlay: { source, entry in
-                    playingTarget = PlaybackTarget(
-                        source: source,
-                        entry: entry,
-                        resumePosition: env.resumePosition(source: source, path: entry.path) ?? 0
-                    )
-                },
-                onOpenSourcesManager: {
-                    selectedTab = .sources
-                }
-            )
-            .tabItem { Label("共享盘", systemImage: "externaldrive.connected.to.line.below") }
-            .tag(MainTab.browser)
-
-            HistoryView(
-                onResumeRecord: { record in
-                    resumePlayback(for: record)
-                },
-                onOpenSource: { source in
-                    selectedSource = source
-                    selectedTab = .browser
-                }
-            )
-            .tabItem { Label("观看历史", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90") }
-            .tag(MainTab.history)
-
-            SourceManagerView(
-                prefillHost: $pendingBonjourHost,
-                prefillKind: $pendingBonjourKind,
-                onOpenSource: { source in
-                    selectedSource = source
-                    selectedTab = .browser
-                }
-            )
-            .tabItem { Label("服务器", systemImage: "server.rack") }
-            .tag(MainTab.sources)
-
-            AppSettingsView()
-                .tabItem { Label("设置", systemImage: "slider.horizontal.3") }
-                .tag(MainTab.settings)
         }
     }
 

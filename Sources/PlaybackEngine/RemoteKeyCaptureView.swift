@@ -75,9 +75,13 @@ public final class RemoteKeyCaptureView: UIView {
             case .playPause:
                 onPlayPause?()
             case .menu:
-                onMenu?()
+                if let onMenu {
+                    onMenu()
+                } else {
+                    super.pressesBegan(presses, with: event)
+                }
             default:
-                break
+                super.pressesBegan(presses, with: event)
             }
         }
     }
@@ -87,8 +91,13 @@ public final class RemoteKeyCaptureView: UIView {
             super.pressesEnded(presses, with: event)
             return
         }
+        var handledArrow = false
         for press in presses where press.type == .leftArrow || press.type == .rightArrow {
             endPress()
+            handledArrow = true
+        }
+        if !handledArrow {
+            super.pressesEnded(presses, with: event)
         }
     }
 

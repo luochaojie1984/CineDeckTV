@@ -38,16 +38,20 @@ public struct PlayerSideDrawer: View {
                 Button("完成", action: onClose)
                     .tvAdaptiveGlassButtonStyle(prominent: true)
             }
+            .focusSection()
 
             Divider().overlay(Color.white.opacity(0.18))
 
             ScrollView {
                 if kind == .subtitles {
                     subtitlesBody
+                        .focusSection()
                 } else {
                     audioAndDecodeBody
+                        .focusSection()
                 }
             }
+            .focusSection()
         }
         .padding(28)
         .frame(width: 660)

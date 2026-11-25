@@ -58,6 +58,7 @@ jobs:
           test -d "$APP" || { echo "::error::app bundle missing"; exit 1; }
           test -d "$APP/Frameworks/FSPlayer.framework" || { echo "::error::FSPlayer.framework not embedded"; exit 1; }
           test -d "$APP/Frameworks/AMSMB2.framework" || { ls "$APP/Frameworks"; echo "::error::AMSMB2.framework not embedded"; exit 1; }
+          test -f "$APP/Assets.car" || { ls -la "$APP"; echo "::error::Assets.car (tvOS App Icon) missing"; exit 1; }
           /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$APP/Info.plist"
           /usr/libexec/PlistBuddy -c "Print :NSBonjourServices" "$APP/Info.plist"
           /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist"

@@ -86,8 +86,7 @@ public struct AppSettingsView: View {
                         }
                     }
                 }
-                .padding(.leading, 80)
-                .padding(.trailing, 48)
+                .padding(.horizontal, 48)
                 .padding(.vertical, 36)
             }
         }

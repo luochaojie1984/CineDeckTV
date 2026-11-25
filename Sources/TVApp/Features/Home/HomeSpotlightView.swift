@@ -28,15 +28,20 @@ public struct HomeSpotlightView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: TVTokens.Spacing.sectionVertical) {
                 heroBanner
+                    .focusSection()
 
                 if !env.history.isEmpty {
                     recentSection
+                        .focusSection()
                 }
 
                 sourcesSection
+                    .focusSection()
+
                 bonjourSection
+                    .focusSection()
             }
-            .padding(.horizontal, TVTokens.Spacing.pageHorizontal)
+            .padding(.horizontal, 48)
             .padding(.vertical, 28)
         }
         .onAppear { bonjour.start() }
@@ -118,7 +123,7 @@ public struct HomeSpotlightView: View {
                         Text("FSPlayer (FFmpeg 7 + Metal + libass) 搭配 AVPlayer 杜比双引擎，即刻直连局域网 SMB / WebDAV 4K 原盘")
                             .font(TVTokens.Typography.secondary)
                             .foregroundStyle(TVTokens.Color.secondaryText)
-                            .frame(maxWidth: 820, alignment: .leading)
+                            .frame(maxWidth: 860, alignment: .leading)
 
                         AdaptiveGlassContainer(spacing: 16) {
                             HStack(spacing: 16) {

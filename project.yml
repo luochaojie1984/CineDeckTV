@@ -46,8 +46,8 @@ targets:
       path: Sources/TVApp/Info.plist
       properties:
         CFBundleDisplayName: CineDeckTV
-        CFBundleShortVersionString: "0.2.0"
-        CFBundleVersion: "2"
+        CFBundleShortVersionString: "0.2.1"
+        CFBundleVersion: "3"
         NSLocalNetworkUsageDescription: "用于发现并访问局域网内的 SMB / WebDAV 影音服务器"
         NSBonjourServices:
           - "_smb._tcp"
@@ -60,3 +60,4 @@ targets:
         TARGETED_DEVICE_FAMILY: "3"
         SWIFT_STRICT_CONCURRENCY: complete
         ENABLE_MODULE_VERIFIER: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"

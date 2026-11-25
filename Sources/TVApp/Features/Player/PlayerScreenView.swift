@@ -115,7 +115,7 @@ public struct PlayerScreenView: View {
                         await proxy?.setScrubMode(false)
                     }
                 },
-                onMenu: { dismissPlayer() },
+                onMenu: nil,
                 onPlayPause: {
                     togglePlayPause()
                     bumpHUD()
@@ -237,14 +237,14 @@ public struct PlayerScreenView: View {
             copy.subtitleStyle = newStyle
             env.update(settings: copy)
         }
-        .onExitCommand {
-            if activeDrawer != nil {
-                activeDrawer = nil
-            } else if showHUD {
-                showHUD = false
-            } else {
-                dismissPlayer()
+        .background(
+            TVMenuBackOverlay(isEnabled: !previewOpenHUD) {
+                handlePlayerMenuBack()
             }
+            .allowsHitTesting(false)
+        )
+        .onExitCommand {
+            handlePlayerMenuBack()
         }
         .task {
             subtitleStyle = env.settings.subtitleStyle
@@ -535,6 +535,19 @@ public struct PlayerScreenView: View {
         nextEpisodeTimerTask?.cancel()
     }
 
+    private func handlePlayerMenuBack() {
+        if activeDrawer != nil {
+            withAnimation(TVTokens.Motion.focus) { activeDrawer = nil }
+        } else if nextEpisodeCountdown != nil {
+            nextEpisodeTimerTask?.cancel()
+            nextEpisodeCountdown = nil
+        } else if showHUD {
+            withAnimation(TVTokens.Motion.focus) { showHUD = false }
+        } else {
+            dismissPlayer()
+        }
+    }
+
     private func dismissPlayer() {
         saveCurrentProgress()
         coordinator.shutdown()
@@ -631,41 +644,67 @@ public struct PlayerScreenView: View {
                 )
                 .tint(TVTokens.Color.accent)
 
-                AdaptiveGlassContainer(spacing: 14) {
-                    HStack(spacing: 14) {
-                        Button(coordinator.isPlaying && !previewOpenHUD ? "暂停" : "播放", systemImage: coordinator.isPlaying ? "pause.fill" : "play.fill") {
+                AdaptiveGlassContainer(spacing: 10) {
+                    HStack(spacing: 10) {
+                        Button {
                             togglePlayPause()
+                        } label: {
+                            Label(coordinator.isPlaying && !previewOpenHUD ? "暂停" : "播放", systemImage: coordinator.isPlaying ? "pause.fill" : "play.fill")
+                                .font(.system(size: 20, weight: .semibold))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                         .tvAdaptiveGlassButtonStyle(prominent: true)
 
-                        Button("字幕", systemImage: "captions.bubble") {
+                        Button {
                             withAnimation(TVTokens.Motion.focus) {
                                 activeDrawer = activeDrawer == .subtitles ? nil : .subtitles
                             }
+                        } label: {
+                            Label("字幕", systemImage: "captions.bubble")
+                                .font(.system(size: 20, weight: .semibold))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                         .tvAdaptiveGlassButtonStyle(prominent: activeDrawer == .subtitles)
                         .tvGlassMorphID("drawer-subtitles", in: drawerNamespace)
 
-                        Button("音轨与解码", systemImage: "waveform") {
+                        Button {
                             withAnimation(TVTokens.Motion.focus) {
                                 activeDrawer = activeDrawer == .audioAndDecode ? nil : .audioAndDecode
                             }
+                        } label: {
+                            Label("音轨", systemImage: "waveform")
+                                .font(.system(size: 20, weight: .semibold))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                         .tvAdaptiveGlassButtonStyle(prominent: activeDrawer == .audioAndDecode)
                         .tvGlassMorphID("drawer-audioAndDecode", in: drawerNamespace)
 
-                        Button("技术统计", systemImage: "chart.bar.xaxis") {
+                        Button {
                             showTechStats.toggle()
+                        } label: {
+                            Label("统计", systemImage: "chart.bar.xaxis")
+                                .font(.system(size: 20, weight: .semibold))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                         .tvAdaptiveGlassButtonStyle(prominent: showTechStats)
 
-                        Spacer()
+                        Spacer(minLength: 8)
 
-                        Button("退出播放", systemImage: "xmark") {
+                        Button {
                             dismissPlayer()
+                        } label: {
+                            Label("退出", systemImage: "xmark")
+                                .font(.system(size: 20, weight: .semibold))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                         .tvAdaptiveGlassButtonStyle()
                     }
+                    .focusSection()
                 }
             }
             .padding(28)
@@ -824,7 +863,7 @@ private struct RemoteCaptureRepresentable: UIViewRepresentable {
     let onTouchpadPanBegan: () -> Void
     let onTouchpadPanChanged: (Double) -> Void
     let onTouchpadPanEnded: () -> Void
-    let onMenu: () -> Void
+    let onMenu: (() -> Void)?
     let onPlayPause: () -> Void
     let onSelect: () -> Void
     let onShowHUD: () -> Void

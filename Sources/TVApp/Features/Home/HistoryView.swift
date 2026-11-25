@@ -39,6 +39,7 @@ public struct HistoryView: View {
                         }
                     }
                 }
+                .focusSection()
 
                 if env.history.isEmpty {
                     VStack(spacing: 16) {
@@ -95,9 +96,10 @@ public struct HistoryView: View {
                             .buttonStyle(TVListRowButtonStyle())
                         }
                     }
+                    .focusSection()
                 }
             }
-            .padding(.horizontal, TVTokens.Spacing.pageHorizontal)
+            .padding(.horizontal, 48)
             .padding(.vertical, 28)
         }
         .confirmationDialog("确定清空全部观看历史吗？", isPresented: $confirmClear, titleVisibility: .visible) {

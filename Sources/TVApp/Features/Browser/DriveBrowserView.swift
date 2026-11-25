@@ -2,33 +2,31 @@ import SwiftUI
 import NetworkVFS
 import AppPreferences
 
-/// 网盘风格共享浏览器：支持网格/列表持久切换、面包屑路径、遥控器 Menu 返回上级目录、真实断点进度、服务器切换重载与错误重试。
+/// 网盘风格共享浏览器：
+/// - 采用原生 `NavigationStack(path:)` 逐级入栈，遥控器按返回自动退回上一级目录，根目录按返回回到「首页」；
+/// - 顶部工具栏与内容区均配置 `.focusSection()`，上下左右方向键随时可在任意卡片与功能按钮间直达移动。
 public struct DriveBrowserView: View {
     @EnvironmentObject private var env: AppEnvironment
     @Binding public var selectedSource: MediaSourceConfig?
+    @Binding public var navPath: [String]
     public var onPlay: (MediaSourceConfig, VFSEntry) -> Void
     public var onOpenSourcesManager: () -> Void
+    public var onBackToHome: () -> Void
 
-    @AppStorage("cinedeck.browser.isGrid") private var storedIsGrid = true
-    @State private var currentPath = "/"
-    @State private var entries: [VFSEntry] = []
-    @State private var isLoading = false
-    @State private var errorMessage: String?
+    @State private var didRestoreInitialPath = false
 
     public init(
         selectedSource: Binding<MediaSourceConfig?>,
+        navPath: Binding<[String]> = .constant([]),
         onPlay: @escaping (MediaSourceConfig, VFSEntry) -> Void,
-        onOpenSourcesManager: @escaping () -> Void = {}
+        onOpenSourcesManager: @escaping () -> Void = {},
+        onBackToHome: @escaping () -> Void = {}
     ) {
         self._selectedSource = selectedSource
+        self._navPath = navPath
         self.onPlay = onPlay
         self.onOpenSourcesManager = onOpenSourcesManager
-    }
-
-    private var effectiveIsGrid: Bool {
-        if env.previewScenario == .browserGrid { return true }
-        if env.previewScenario == .browserList { return false }
-        return storedIsGrid
+        self.onBackToHome = onBackToHome
     }
 
     private var activeSource: MediaSourceConfig? {
@@ -36,60 +34,140 @@ public struct DriveBrowserView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            toolbar
-
-            if let source = activeSource {
-                if let errorMessage {
-                    errorCard(errorMessage, source: source)
-                } else if isLoading && entries.isEmpty {
-                    ProgressView("正在读取共享目录…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if entries.isEmpty {
-                    emptyFolderCard
-                } else {
-                    ScrollView {
-                        if effectiveIsGrid { gridContent(source: source) } else { listContent(source: source) }
-                    }
-                }
-            } else {
-                noSourceCard
+        NavigationStack(path: $navPath) {
+            DriveDirectoryPage(
+                source: activeSource,
+                currentPath: "/",
+                navPath: $navPath,
+                selectedSource: $selectedSource,
+                onPlay: onPlay,
+                onOpenSourcesManager: onOpenSourcesManager
+            )
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: String.self) { targetPath in
+                DriveDirectoryPage(
+                    source: activeSource,
+                    currentPath: targetPath,
+                    navPath: $navPath,
+                    selectedSource: $selectedSource,
+                    onPlay: onPlay,
+                    onOpenSourcesManager: onOpenSourcesManager
+                )
+                .toolbar(.hidden, for: .navigationBar)
             }
         }
-        .padding(.horizontal, TVTokens.Spacing.browserHorizontal)
-        .padding(.vertical, 24)
-        .task(id: taskKey) {
-            await loadDirectory()
+        .onAppear {
+            if !didRestoreInitialPath, let src = activeSource {
+                didRestoreInitialPath = true
+                restorePath(for: src.id)
+            }
         }
         .onChange(of: selectedSource?.id) { _, newID in
-            if let newID, let saved = env.lastVisitedPath(for: newID), !saved.isEmpty {
-                currentPath = saved
+            if let newID {
+                restorePath(for: newID)
             } else {
-                currentPath = "/"
+                navPath = []
             }
         }
-        .onExitCommand {
-            if !isAtRoot {
-                goUp()
+        .onChange(of: navPath) { _, newStack in
+            if let src = activeSource {
+                env.saveLastVisitedPath(newStack.last ?? "/", for: src.id)
             }
         }
     }
 
-    private var taskKey: String {
-        "\(activeSource?.id.uuidString ?? "none")::\(currentPath)"
+    private func restorePath(for sourceID: UUID) {
+        guard env.previewScenario == nil,
+              let saved = env.lastVisitedPath(for: sourceID),
+              saved != "/" else {
+            navPath = []
+            return
+        }
+        let segments = saved.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
+        var stack: [String] = []
+        var prefix = ""
+        for seg in segments {
+            prefix += "/\(seg)"
+            stack.append(prefix)
+        }
+        navPath = stack
+    }
+}
+
+private struct DriveDirectoryPage: View {
+    @EnvironmentObject private var env: AppEnvironment
+
+    let source: MediaSourceConfig?
+    let currentPath: String
+    @Binding var navPath: [String]
+    @Binding var selectedSource: MediaSourceConfig?
+    let onPlay: (MediaSourceConfig, VFSEntry) -> Void
+    let onOpenSourcesManager: () -> Void
+
+    @AppStorage("cinedeck.browser.isGrid") private var storedIsGrid = true
+    @State private var entries: [VFSEntry] = []
+    @State private var isLoading = false
+    @State private var errorMessage: String?
+
+    private var effectiveIsGrid: Bool {
+        if env.previewScenario == .browserGrid { return true }
+        if env.previewScenario == .browserList { return false }
+        return storedIsGrid
     }
 
     private var isAtRoot: Bool {
         currentPath == "/" || currentPath.isEmpty
     }
 
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            toolbar
+                .focusSection()
+
+            if let source {
+                if let errorMessage {
+                    errorCard(errorMessage, source: source)
+                        .focusSection()
+                } else if isLoading && entries.isEmpty {
+                    ProgressView("正在读取共享目录…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if entries.isEmpty {
+                    emptyFolderCard
+                        .focusSection()
+                } else {
+                    ScrollView {
+                        if effectiveIsGrid {
+                            gridContent(source: source)
+                                .focusSection()
+                        } else {
+                            listContent(source: source)
+                                .focusSection()
+                        }
+                    }
+                    .focusSection()
+                }
+            } else {
+                noSourceCard
+                    .focusSection()
+            }
+        }
+        .padding(.horizontal, 48)
+        .padding(.vertical, 24)
+        .task(id: "\(source?.id.uuidString ?? "none")::\(currentPath)") {
+            await loadDirectory()
+        }
+    }
+
     private var toolbar: some View {
         AdaptiveGlassContainer(spacing: 14) {
             HStack(spacing: 14) {
                 if !isAtRoot {
-                    Button(action: goUp) {
+                    Button {
+                        if !navPath.isEmpty { navPath.removeLast() }
+                    } label: {
                         Label("返回上级", systemImage: "chevron.left")
                             .font(TVTokens.Typography.button)
+                            .lineLimit(1)
                             .padding(.horizontal, 18)
                             .padding(.vertical, 12)
                     }
@@ -97,7 +175,7 @@ public struct DriveBrowserView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(activeSource?.name ?? "未连接片源")
+                    Text(source?.name ?? "未连接片源")
                         .font(TVTokens.Typography.directoryTitle)
                         .lineLimit(1)
                     Text(currentPath.isEmpty ? "/" : currentPath)
@@ -108,7 +186,7 @@ public struct DriveBrowserView: View {
 
                 Spacer()
 
-                if env.sources.count > 1, let current = activeSource {
+                if env.sources.count > 1, let current = source {
                     Menu {
                         ForEach(env.sources) { src in
                             Button {
@@ -120,6 +198,7 @@ public struct DriveBrowserView: View {
                     } label: {
                         Label("切换服务器", systemImage: "arrow.left.arrow.right")
                             .font(TVTokens.Typography.button)
+                            .lineLimit(1)
                             .padding(.horizontal, 18)
                             .padding(.vertical, 12)
                     }
@@ -131,6 +210,7 @@ public struct DriveBrowserView: View {
                 } label: {
                     Label(effectiveIsGrid ? "列表视图" : "网格视图", systemImage: effectiveIsGrid ? "list.bullet" : "square.grid.2x2")
                         .font(TVTokens.Typography.button)
+                        .lineLimit(1)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
                 }
@@ -141,6 +221,7 @@ public struct DriveBrowserView: View {
                 } label: {
                     Label("刷新", systemImage: "arrow.clockwise")
                         .font(TVTokens.Typography.button)
+                        .lineLimit(1)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
                 }
@@ -271,8 +352,10 @@ public struct DriveBrowserView: View {
             Text("当前目录为空")
                 .font(TVTokens.Typography.sectionTitle)
             if !isAtRoot {
-                Button("返回上级目录", action: goUp)
-                    .tvAdaptiveGlassButtonStyle(prominent: true)
+                Button("返回上级目录") {
+                    if !navPath.isEmpty { navPath.removeLast() }
+                }
+                .tvAdaptiveGlassButtonStyle(prominent: true)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -331,26 +414,14 @@ public struct DriveBrowserView: View {
 
     private func open(_ entry: VFSEntry, source: MediaSourceConfig) {
         if entry.isDirectory {
-            currentPath = entry.path
-            env.saveLastVisitedPath(entry.path, for: source.id)
+            navPath.append(entry.path)
         } else if entry.isVideo {
             onPlay(source, entry)
         }
     }
 
-    private func goUp() {
-        let trimmed = currentPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard !trimmed.isEmpty else { return }
-        let parent = (trimmed as NSString).deletingLastPathComponent
-        let next = parent.isEmpty ? "/" : "/\(parent)"
-        currentPath = next
-        if let source = activeSource {
-            env.saveLastVisitedPath(next, for: source.id)
-        }
-    }
-
     private func loadDirectory() async {
-        guard let source = activeSource else {
+        guard let source else {
             entries = []
             errorMessage = nil
             return
