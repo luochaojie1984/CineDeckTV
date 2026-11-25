@@ -35,6 +35,8 @@ targets:
         product: SubtitleKit
       - package: MediaCoreKit
         product: AppPreferences
+      - package: MediaCoreKit
+        product: PlaybackKit
       # 二进制 XCFramework：禁止 embed: true
       - package: FSPlayer
         product: FSPlayer
