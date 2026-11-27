@@ -2,7 +2,7 @@ import SwiftUI
 import NetworkVFS
 import AppPreferences
 
-/// 首页聚光灯（tvOS 26/27 Cinema Liquid Glass Hero + 海报式继续观看 + 共享源网格 + Bonjour 局域网即时发现）。
+/// 首页聚光灯：顶部优先呈现局域网片源与自动发现，下方紧接历史播放记录。
 public struct HomeSpotlightView: View {
     @EnvironmentObject private var env: AppEnvironment
     @StateObject private var bonjour = BonjourDiscoveryService()
@@ -26,321 +26,22 @@ public struct HomeSpotlightView: View {
 
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: TVTokens.Spacing.sectionVertical) {
-                heroBanner
-                    .focusSection()
-
-                if !env.history.isEmpty {
-                    recentSection
-                        .focusSection()
-                }
-
+            VStack(alignment: .leading, spacing: 28) {
                 sourcesSection
                     .focusSection()
 
                 bonjourSection
                     .focusSection()
+
+                recentSection
+                    .focusSection()
             }
             .padding(.horizontal, TVTokens.Spacing.pageHorizontal)
-            .padding(.top, 26)
+            .padding(.top, 22)
             .padding(.bottom, 52)
         }
         .onAppear { bonjour.start() }
         .onDisappear { bonjour.stop() }
-    }
-
-    private var heroBanner: some View {
-        let hero = env.history.first
-        let heroTitle = hero?.title ?? "CineDeckTV 家庭影院"
-        let theme = TVMediaTheme.palette(forTitle: heroTitle)
-        let badges = hero.map { VFSEntry(path: $0.path, name: $0.title, isDirectory: false, size: 0, modifiedAt: nil).badges } ?? ["4K", "HDR10", "HEVC", "Atmos"]
-
-        return ZStack {
-            // 所有环境光斑严格在面板圆角内裁切，彻底杜绝光晕溢出边框
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        theme.primary.opacity(0.24),
-                        theme.secondary.opacity(0.18),
-                        Color(red: 0.05, green: 0.08, blue: 0.16)
-                    ],
-                    startPoint: .topTrailing,
-                    endPoint: .bottomLeading
-                )
-                RadialGradient(
-                    colors: [theme.primary.opacity(0.34), .clear],
-                    center: UnitPoint(x: 0.85, y: 0.18),
-                    startRadius: 10,
-                    endRadius: 520
-                )
-                RadialGradient(
-                    colors: [theme.secondary.opacity(0.28), .clear],
-                    center: UnitPoint(x: 0.15, y: 0.90),
-                    startRadius: 10,
-                    endRadius: 460
-                )
-            }
-
-            HStack(spacing: 36) {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(spacing: 12) {
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(hero != nil ? TVTokens.Color.amber : TVTokens.Color.accent)
-                                .frame(width: 9, height: 9)
-                                .shadow(color: (hero != nil ? TVTokens.Color.amber : TVTokens.Color.accent).opacity(0.8), radius: 5)
-                            Text(hero != nil ? "继续上次观看" : "双引擎直连影院")
-                                .font(.system(size: 16, weight: .bold))
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(.white.opacity(0.10), in: Capsule())
-                        .overlay(Capsule().strokeBorder(.white.opacity(0.22), lineWidth: 1))
-
-                        VideoBadgeRow(badges, maxCount: 4)
-                    }
-
-                    if let hero {
-                        Text(TVTitleFormatter.cleanDisplayTitle(hero.title))
-                            .font(TVTokens.Typography.heroTitle)
-                            .lineLimit(2)
-
-                        HStack(spacing: 14) {
-                            Text("已播 \(Int(hero.progress * 100))%")
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundStyle(theme.primary)
-                            Text("·")
-                                .foregroundStyle(TVTokens.Color.tertiaryText)
-                            Text("\(formatClock(hero.position)) / \(formatClock(hero.duration))")
-                            Text("·")
-                                .foregroundStyle(TVTokens.Color.tertiaryText)
-                            Text("剩余约 \(Int(max(1, hero.remaining / 60))) 分钟")
-                        }
-                        .font(TVTokens.Typography.secondary)
-                        .foregroundStyle(TVTokens.Color.secondaryText)
-
-                        TVProgressBar(
-                            progress: hero.progress,
-                            tint: theme.primary,
-                            secondaryTint: theme.secondary,
-                            height: 8
-                        )
-                        .frame(maxWidth: 620)
-                        .padding(.vertical, 4)
-
-                        AdaptiveGlassContainer(spacing: 16) {
-                            HStack(spacing: 16) {
-                                Button {
-                                    onResumeRecord(hero)
-                                } label: {
-                                    Label("继续播放", systemImage: "play.fill")
-                                        .font(TVTokens.Typography.button)
-                                        .padding(.horizontal, 28)
-                                        .padding(.vertical, 14)
-                                }
-                                .tvAdaptiveGlassButtonStyle(prominent: true)
-                                .tint(theme.primary)
-
-                                if let src = env.sources.first(where: { $0.id == hero.sourceID }) ?? env.sources.first {
-                                    Button {
-                                        onOpenSource(src)
-                                    } label: {
-                                        Label("打开共享目录", systemImage: "folder.fill")
-                                            .font(TVTokens.Typography.button)
-                                            .padding(.horizontal, 24)
-                                            .padding(.vertical, 14)
-                                    }
-                                    .tvAdaptiveGlassButtonStyle()
-                                }
-                            }
-                        }
-                    } else {
-                        Text("CineDeckTV")
-                            .font(TVTokens.Typography.heroTitle)
-                        Text("FSPlayer (FFmpeg 7 + Metal + libass) 搭配 AVPlayer 杜比双引擎，即刻直连局域网 SMB / WebDAV 4K 原盘")
-                            .font(TVTokens.Typography.secondary)
-                            .foregroundStyle(TVTokens.Color.secondaryText)
-                            .frame(maxWidth: 780, alignment: .leading)
-
-                        AdaptiveGlassContainer(spacing: 16) {
-                            HStack(spacing: 16) {
-                                Button {
-                                    if let first = env.sources.first {
-                                        onOpenSource(first)
-                                    } else {
-                                        onOpenSourcesManager()
-                                    }
-                                } label: {
-                                    Label(env.sources.isEmpty ? "添加 SMB / WebDAV 服务器" : "浏览共享片库", systemImage: env.sources.isEmpty ? "plus.circle.fill" : "folder.fill")
-                                        .font(TVTokens.Typography.button)
-                                        .padding(.horizontal, 28)
-                                        .padding(.vertical, 14)
-                                }
-                                .tvAdaptiveGlassButtonStyle(prominent: true)
-                            }
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                heroArtworkPlaque(theme: theme, hero: hero)
-            }
-            .padding(36)
-        }
-        .frame(height: TVTokens.Size.heroHeight)
-        .clipShape(RoundedRectangle(cornerRadius: TVTokens.Radius.panel, style: .continuous))
-        .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false, tint: theme.primary.opacity(0.08))
-    }
-
-    private func heroArtworkPlaque(theme: TVMediaPalette, hero: PlaybackRecord?) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
-        return ZStack {
-            LinearGradient(
-                colors: [theme.primary.opacity(0.38), theme.secondary.opacity(0.30), Color.black.opacity(0.45)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            RadialGradient(
-                colors: [Color.white.opacity(0.22), .clear],
-                center: .topLeading,
-                startRadius: 10,
-                endRadius: 260
-            )
-            VStack(alignment: .leading, spacing: 18) {
-                HStack {
-                    Text(theme.tag)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.black.opacity(0.32), in: Capsule())
-                        .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 1))
-                    Spacer()
-                    Image(systemName: "4k.tv.fill")
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.9))
-                }
-
-                Spacer()
-
-                HStack {
-                    Spacer()
-                    Image(systemName: theme.symbol)
-                        .font(.system(size: 76, weight: .medium))
-                        .foregroundStyle(
-                            LinearGradient(colors: [.white, theme.primary.opacity(0.9)], startPoint: .top, endPoint: .bottom)
-                        )
-                        .shadow(color: theme.primary.opacity(0.65), radius: 18, y: 6)
-                    Spacer()
-                }
-
-                Spacer()
-
-                HStack(spacing: 10) {
-                    plaqueChip("KSPlayer 5.6 + Metal")
-                    plaqueChip("闭环同步快进")
-                    Spacer()
-                    if let hero {
-                        Text("\(Int(hero.progress * 100))%")
-                            .font(.system(size: 18, weight: .heavy, design: .monospaced))
-                            .foregroundStyle(.white)
-                    }
-                }
-            }
-            .padding(22)
-        }
-        .frame(width: 460, height: 326)
-        .clipShape(shape)
-        .overlay(
-            shape.strokeBorder(
-                LinearGradient(colors: [.white.opacity(0.40), .white.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                lineWidth: 1.2
-            )
-        )
-        .shadow(color: theme.primary.opacity(0.28), radius: 20, y: 10)
-    }
-
-    private func plaqueChip(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 15, weight: .semibold))
-            .lineLimit(1)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 5)
-            .background(.white.opacity(0.14), in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(0.20), lineWidth: 0.8))
-    }
-
-    private var recentSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionHeader("继续观看", subtitle: "从上次停下的精准时刻无缝续播", icon: "play.rectangle.fill", tint: TVTokens.Color.amber)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: TVTokens.Spacing.gridSpacing) {
-                    ForEach(env.history.prefix(10)) { record in
-                        let entry = VFSEntry(path: record.path, name: record.title, isDirectory: false, size: 0, modifiedAt: nil)
-                        let theme = TVMediaTheme.palette(forTitle: record.title)
-                        Button {
-                            onResumeRecord(record)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 0) {
-                                ZStack(alignment: .topLeading) {
-                                    LinearGradient(
-                                        colors: [theme.primary.opacity(0.34), theme.secondary.opacity(0.22), Color.black.opacity(0.18)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                    VStack(alignment: .leading, spacing: 10) {
-                                        HStack {
-                                            VideoBadgeRow(entry.badges, maxCount: 3)
-                                            Spacer()
-                                            Image(systemName: "play.circle.fill")
-                                                .font(.system(size: 32))
-                                                .foregroundStyle(.white.opacity(0.92))
-                                                .shadow(color: theme.primary.opacity(0.6), radius: 8)
-                                        }
-                                        Spacer()
-                                        HStack {
-                                            Text("已播 \(Int(record.progress * 100))%")
-                                                .font(.system(size: 15, weight: .bold))
-                                                .padding(.horizontal, 10)
-                                                .padding(.vertical, 4)
-                                                .background(Color.black.opacity(0.35), in: Capsule())
-                                            Spacer()
-                                            Text("剩 \(Int(max(1, record.remaining / 60))) 分钟")
-                                                .font(.system(size: 15, weight: .medium))
-                                                .foregroundStyle(.white.opacity(0.85))
-                                        }
-                                    }
-                                    .padding(16)
-                                }
-                                .frame(height: 112)
-
-                                VStack(alignment: .leading, spacing: 10) {
-                                    Text(TVTitleFormatter.cleanDisplayTitle(record.title))
-                                        .font(TVTokens.Typography.gridPrimary)
-                                        .lineLimit(2)
-                                    Spacer(minLength: 2)
-                                    TVProgressBar(
-                                        progress: record.progress,
-                                        tint: theme.primary,
-                                        secondaryTint: theme.secondary,
-                                        height: 6
-                                    )
-                                    Text("\(formatClock(record.position)) / \(formatClock(record.duration))")
-                                        .font(TVTokens.Typography.tertiary)
-                                        .foregroundStyle(TVTokens.Color.secondaryText)
-                                }
-                                .padding(18)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                            }
-                            .frame(width: 432, height: 242, alignment: .leading)
-                        }
-                        .buttonStyle(TVCardButtonStyle(accentTint: theme.primary))
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 20)
-            }
-        }
     }
 
     private var sourcesSection: some View {
@@ -375,12 +76,23 @@ public struct HomeSpotlightView: View {
                                         .fill(TVTokens.Color.emerald)
                                         .frame(width: 8, height: 8)
                                 }
-                                Text("\(source.kind.displayName) · \(source.host):\(String(source.port))")
-                                    .font(TVTokens.Typography.secondary)
-                                    .foregroundStyle(TVTokens.Color.secondaryText)
-                                    .lineLimit(1)
+                                HStack(spacing: 8) {
+                                    Text(source.kind.displayName)
+                                        .font(.system(size: 13, weight: .bold))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(tint.opacity(0.22), in: Capsule())
+                                        .foregroundStyle(tint)
+                                    Text("\(source.host):\(String(source.port))")
+                                        .font(TVTokens.Typography.secondary)
+                                        .foregroundStyle(TVTokens.Color.secondaryText)
+                                        .lineLimit(1)
+                                }
                             }
-                            Spacer()
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(TVTokens.Color.tertiaryText)
                         }
                         .padding(TVTokens.Spacing.cardInner)
                     }
@@ -407,7 +119,10 @@ public struct HomeSpotlightView: View {
                                 .font(TVTokens.Typography.secondary)
                                 .foregroundStyle(TVTokens.Color.secondaryText)
                         }
-                        Spacer()
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(TVTokens.Color.tertiaryText)
                     }
                     .padding(TVTokens.Spacing.cardInner)
                 }
@@ -469,6 +184,94 @@ public struct HomeSpotlightView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 12)
+            }
+        }
+    }
+
+    private var recentSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader("历史播放记录", subtitle: "从上次停下的精准时刻无缝续播", icon: "clock.arrow.circlepath", tint: TVTokens.Color.amber)
+
+            if env.history.isEmpty {
+                HStack(spacing: 14) {
+                    Image(systemName: "film.stack")
+                        .font(.system(size: 24))
+                        .foregroundStyle(TVTokens.Color.amber)
+                    Text("暂无历史播放记录 · 从上方局域网片源选择影片开始观影")
+                        .font(TVTokens.Typography.secondary)
+                        .foregroundStyle(TVTokens.Color.secondaryText)
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 16)
+                .tvGlassSurface(cornerRadius: 18, clear: true)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: TVTokens.Spacing.gridSpacing) {
+                        ForEach(env.history.prefix(10)) { record in
+                            let entry = VFSEntry(path: record.path, name: record.title, isDirectory: false, size: 0, modifiedAt: nil)
+                            let theme = TVMediaTheme.palette(forTitle: record.title)
+                            Button {
+                                onResumeRecord(record)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 0) {
+                                    ZStack(alignment: .topLeading) {
+                                        LinearGradient(
+                                            colors: [theme.primary.opacity(0.34), theme.secondary.opacity(0.22), Color.black.opacity(0.18)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                        VStack(alignment: .leading, spacing: 10) {
+                                            HStack {
+                                                VideoBadgeRow(entry.badges, maxCount: 3)
+                                                Spacer()
+                                                Image(systemName: "play.circle.fill")
+                                                    .font(.system(size: 32))
+                                                    .foregroundStyle(.white.opacity(0.92))
+                                                    .shadow(color: theme.primary.opacity(0.6), radius: 8)
+                                            }
+                                            Spacer()
+                                            HStack {
+                                                Text("已播 \(Int(record.progress * 100))%")
+                                                    .font(.system(size: 15, weight: .bold))
+                                                    .padding(.horizontal, 10)
+                                                    .padding(.vertical, 4)
+                                                    .background(Color.black.opacity(0.35), in: Capsule())
+                                                Spacer()
+                                                Text("剩 \(Int(max(1, record.remaining / 60))) 分钟")
+                                                    .font(.system(size: 15, weight: .medium))
+                                                    .foregroundStyle(.white.opacity(0.85))
+                                            }
+                                        }
+                                        .padding(16)
+                                    }
+                                    .frame(height: 112)
+
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        Text(TVTitleFormatter.cleanDisplayTitle(record.title))
+                                            .font(TVTokens.Typography.gridPrimary)
+                                            .lineLimit(2)
+                                        Spacer(minLength: 2)
+                                        TVProgressBar(
+                                            progress: record.progress,
+                                            tint: theme.primary,
+                                            secondaryTint: theme.secondary,
+                                            height: 6
+                                        )
+                                        Text("\(formatClock(record.position)) / \(formatClock(record.duration))")
+                                            .font(TVTokens.Typography.tertiary)
+                                            .foregroundStyle(TVTokens.Color.secondaryText)
+                                    }
+                                    .padding(18)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                                }
+                                .frame(width: 432, height: 242, alignment: .leading)
+                            }
+                            .buttonStyle(TVCardButtonStyle(accentTint: theme.primary))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 20)
+                }
             }
         }
     }

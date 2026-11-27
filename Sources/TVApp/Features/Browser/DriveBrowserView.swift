@@ -3,7 +3,7 @@ import NetworkVFS
 import AppPreferences
 
 /// SMB / WebDAV 共享浏览器：
-/// - 默认采用「横条树状排列」，层级枝干一目了然；
+/// - 默认采用「纯净横条列表排列」，齐整利落无冗余树干线；
 /// - 严格过滤字幕文件（.srt/.ass/.ssa/.vtt/.sub/.sup）及所有不可播放的非视频格式，仅展示共享文件夹与可播放视频；
 /// - 焦点严格约束在条目边框内，绝不越界裁切。
 public struct DriveBrowserView: View {
@@ -105,7 +105,7 @@ private struct DriveDirectoryPage: View {
     let onPlay: (MediaSourceConfig, VFSEntry) -> Void
     let onOpenSourcesManager: () -> Void
 
-    /// 默认横条树状排列（使用新 key 确保升级安装立即生效）。
+    /// 默认横条列表排列（使用新 key 确保升级安装立即生效）。
     @AppStorage("cinedeck.browser.viewStyleV2") private var storedIsGrid = false
     @State private var entries: [VFSEntry] = []
     @State private var isLoading = false
@@ -159,7 +159,7 @@ private struct DriveDirectoryPage: View {
                             gridContent(source: source)
                                 .focusSection()
                         } else {
-                            treeListContent(source: source)
+                            listContent(source: source)
                                 .focusSection()
                         }
                     }
@@ -216,14 +216,14 @@ private struct DriveDirectoryPage: View {
                     }
 
                     HStack(spacing: 6) {
-                        Image(systemName: "list.bullet.indent")
+                        Image(systemName: "folder.fill")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(TVTokens.Color.accent)
                         Text(source?.sharePath.isEmpty == false ? source!.sharePath : "/")
                             .font(.system(size: 17, weight: .bold, design: .monospaced))
                             .foregroundStyle(TVTokens.Color.accent)
                         if pathSegments.isEmpty {
-                            Text("· 共享目录树")
+                            Text("· 共享目录")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundStyle(TVTokens.Color.secondaryText)
                         } else {
@@ -268,7 +268,7 @@ private struct DriveDirectoryPage: View {
                         storedIsGrid.toggle()
                     }
                 } label: {
-                    Label(effectiveIsGrid ? "树状横条" : "网格视图", systemImage: effectiveIsGrid ? "list.bullet.indent" : "square.grid.2x2")
+                    Label(effectiveIsGrid ? "列表视图" : "网格视图", systemImage: effectiveIsGrid ? "list.bullet" : "square.grid.2x2")
                         .font(TVTokens.Typography.button)
                         .lineLimit(1)
                         .padding(.horizontal, 18)
@@ -293,14 +293,12 @@ private struct DriveDirectoryPage: View {
         .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false)
     }
 
-    /// 横条树状排列视图：左侧树状枝干线 + 缩进层级节点 + 严格边框内聚焦横条。
-    private func treeListContent(source: MediaSourceConfig) -> some View {
+    /// 纯净横条列表视图：全宽胶囊横条 + 严格边框内聚焦效果，无左侧树干竖线与分支横线。
+    private func listContent(source: MediaSourceConfig) -> some View {
         let items = visibleEntries
-        let depth = min(pathSegments.count, 3)
-        let leadingIndent = CGFloat(depth) * 28
 
         return LazyVStack(alignment: .leading, spacing: 12) {
-            // 树根节点标头行
+            // 当前目录标头行
             HStack(spacing: 12) {
                 Image(systemName: isAtRoot ? "externaldrive.connected.to.line.below.fill" : "folder.fill")
                     .font(.system(size: 20, weight: .bold))
@@ -316,27 +314,13 @@ private struct DriveDirectoryPage: View {
                     .foregroundStyle(TVTokens.Color.accent)
                 Spacer()
             }
-            .padding(.leading, leadingIndent + 12)
+            .padding(.leading, 6)
             .padding(.bottom, 2)
 
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, entry in
-                let isLast = (index == items.count - 1)
+            ForEach(items) { entry in
                 let theme = TVMediaTheme.palette(forTitle: entry.name, isDirectory: entry.isDirectory, isSubtitle: false)
 
-                HStack(spacing: 0) {
-                    if leadingIndent > 0 {
-                        Spacer().frame(width: leadingIndent)
-                    }
-
-                    // 树状枝干连接器（纵线 + L形支线 + 节点圆点）
-                    TreeBranchIndicator(
-                        isDirectory: entry.isDirectory,
-                        isLast: isLast,
-                        tint: theme.primary
-                    )
-                    .frame(width: 38, height: 84)
-
-                    Button {
+                Button {
                         open(entry, source: source)
                     } label: {
                         HStack(spacing: 18) {
@@ -416,11 +400,10 @@ private struct DriveDirectoryPage: View {
                         .padding(.vertical, 14)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(TVListRowButtonStyle(accentTint: theme.primary))
-                }
+                .buttonStyle(TVListRowButtonStyle(accentTint: theme.primary))
             }
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 12)
         .padding(.vertical, 14)
     }
 
@@ -619,34 +602,5 @@ private struct DriveDirectoryPage: View {
 
     private func formatSize(_ bytes: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
-    }
-}
-
-/// 树状枝干指示线：为横条目录与视频项提供清晰的树形层级视觉锚点。
-private struct TreeBranchIndicator: View {
-    let isDirectory: Bool
-    let isLast: Bool
-    let tint: Color
-
-    var body: some View {
-        GeometryReader { geo in
-            let midY = geo.size.height * 0.5
-            let railX: CGFloat = 14
-            ZStack {
-                Path { path in
-                    path.move(to: CGPoint(x: railX, y: -8))
-                    path.addLine(to: CGPoint(x: railX, y: isLast ? midY : geo.size.height + 8))
-                    path.move(to: CGPoint(x: railX, y: midY))
-                    path.addLine(to: CGPoint(x: geo.size.width - 8, y: midY))
-                }
-                .stroke(Color.white.opacity(0.24), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-
-                Circle()
-                    .fill(isDirectory ? tint : tint.opacity(0.85))
-                    .frame(width: isDirectory ? 9 : 7, height: isDirectory ? 9 : 7)
-                    .position(x: geo.size.width - 6, y: midY)
-            }
-        }
-        .allowsHitTesting(false)
     }
 }

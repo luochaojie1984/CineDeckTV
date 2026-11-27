@@ -83,15 +83,32 @@ public final class SubtitleFontRegistry: @unchecked Sendable {
         return lock.withLock { $0.fontsDirectoryPath }
     }
 
+    private func resolvedPostScriptName(for family: SubtitleStyleConfig.FontFamily) -> String {
+        if let fileName = family.bundledFileName,
+           let discoveredPS = lock.withLock({ $0.postScriptByFile[fileName] }),
+           !discoveredPS.isEmpty {
+            return discoveredPS
+        }
+        return family.postScriptName
+    }
+
     public func resolveUIFont(for family: SubtitleStyleConfig.FontFamily, size: CGFloat) -> UIFont {
         ensureRegistered()
         let clampedSize = min(96, max(16, size))
 
-        if let fileName = family.bundledFileName {
-            let discoveredPS = lock.withLock { $0.postScriptByFile[fileName] }
-            if let discoveredPS, let font = UIFont(name: discoveredPS, size: clampedSize) {
-                return font
+        let primaryPS = resolvedPostScriptName(for: family)
+        if let primaryFont = UIFont(name: primaryPS, size: clampedSize) {
+            let cascadeDescriptors: [UIFontDescriptor] = family.fallbackOrder.compactMap { fbFamily in
+                let fbPS = resolvedPostScriptName(for: fbFamily)
+                guard UIFont(name: fbPS, size: clampedSize) != nil else { return nil }
+                return UIFontDescriptor(name: fbPS, size: clampedSize)
             }
+            if !cascadeDescriptors.isEmpty {
+                let descriptor = primaryFont.fontDescriptor
+                    .addingAttributes([.cascadeList: cascadeDescriptors])
+                return UIFont(descriptor: descriptor, size: clampedSize)
+            }
+            return primaryFont
         }
 
         if let direct = UIFont(name: family.postScriptName, size: clampedSize) {

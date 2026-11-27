@@ -96,4 +96,26 @@ struct SubtitleKitTests {
         #expect(decoded.fontSize == 66)
         #expect(decoded.bottomInset == 8)
     }
+
+    @Test("内置字体 PostScript、libass 家族名与风格回退链完整准确")
+    func fontMetadataAndFallbackChain() {
+        #expect(SubtitleStyleConfig.FontFamily.kaiti.postScriptName == "LXGWWenKaiLite-Medium")
+        #expect(SubtitleStyleConfig.FontFamily.kaiti.libassFamilyName == "LXGW WenKai Lite")
+        #expect(SubtitleStyleConfig.FontFamily.songti.postScriptName == "LXGWNeoZhiSongPlus")
+        #expect(SubtitleStyleConfig.FontFamily.songti.libassFamilyName == "LXGW Neo ZhiSong Plus")
+        #expect(SubtitleStyleConfig.FontFamily.fangsong.postScriptName == "ZhuqueFangsong-Regular")
+        #expect(SubtitleStyleConfig.FontFamily.fangsong.libassFamilyName == "Zhuque Fangsong (technical preview)")
+        #expect(SubtitleStyleConfig.FontFamily.rounded.postScriptName == "LXGWMarkerGothic-Regular")
+        #expect(SubtitleStyleConfig.FontFamily.rounded.libassFamilyName == "LXGW Marker Gothic")
+        #expect(SubtitleStyleConfig.FontFamily.smiley.postScriptName == "LXGWFasmartGothic")
+        #expect(SubtitleStyleConfig.FontFamily.smiley.libassFamilyName == "LXGW Fasmart Gothic")
+
+        for family in SubtitleStyleConfig.FontFamily.allCases where family.bundledFileName != nil {
+            #expect(!family.fallbackOrder.isEmpty)
+            #expect(family.fallbackOrder.allSatisfy { $0.bundledFileName != nil && $0 != family })
+        }
+        #expect(SubtitleStyleConfig.FontFamily.system.fallbackOrder.isEmpty)
+        #expect(SubtitleStyleConfig.FontFamily.heavy.fallbackOrder.isEmpty)
+    }
 }
+
