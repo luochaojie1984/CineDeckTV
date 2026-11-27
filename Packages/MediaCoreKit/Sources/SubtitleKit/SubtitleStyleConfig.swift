@@ -1,6 +1,6 @@
 import Foundation
 
-/// 文本字幕样式配置：支持 7 款真实全字库中文字体（内置 5 款全字库开源 CJK/日文汉字 TTF：楷体/宋体/仿宋/圆体/电影艺术黑 + 系统黑体/粗黑）、10 种字幕配色、字号、底距位置、描边、底框、对齐与时间偏移。
+/// 文本字幕样式配置：支持 8 款真实全字库中文字体（内置 6 款补全 CJK/日文汉字 TTF：经典毛笔楷体/霞鹜文楷/书香宋体/朱雀仿宋/柔和圆体/电影艺术黑 + 系统黑体/粗黑）、10 种字幕配色、字号、底距位置、描边、底框、对齐与时间偏移。
 public struct SubtitleStyleConfig: Codable, Sendable, Equatable {
     public enum HorizontalAlignment: String, Codable, Sendable, CaseIterable {
         case leading, center, trailing
@@ -18,6 +18,7 @@ public struct SubtitleStyleConfig: Codable, Sendable, Equatable {
         case system
         case heavy
         case kaiti
+        case wenkai
         case songti
         case fangsong
         case rounded
@@ -28,6 +29,7 @@ public struct SubtitleStyleConfig: Codable, Sendable, Equatable {
             case .system: return "影院黑体"
             case .heavy: return "醒目粗黑"
             case .kaiti: return "经典楷体"
+            case .wenkai: return "霞鹜文楷"
             case .songti: return "书香宋体"
             case .fangsong: return "朱雀仿宋"
             case .rounded: return "柔和圆体"
@@ -40,6 +42,7 @@ public struct SubtitleStyleConfig: Codable, Sendable, Equatable {
             switch self {
             case .system, .heavy: return nil
             case .kaiti: return "CineDeck-Kaiti.ttf"
+            case .wenkai: return "CineDeck-WenKai.ttf"
             case .songti: return "CineDeck-Songti.ttf"
             case .fangsong: return "CineDeck-Fangsong.ttf"
             case .rounded: return "CineDeck-Yuanti.ttf"
@@ -52,11 +55,12 @@ public struct SubtitleStyleConfig: Codable, Sendable, Equatable {
             switch self {
             case .system: return "PingFangSC-Medium"
             case .heavy: return "PingFangSC-Semibold"
-            case .kaiti: return "LXGWWenKaiLite-Medium"
-            case .songti: return "LXGWNeoZhiSongPlus"
-            case .fangsong: return "ZhuqueFangsong-Regular"
-            case .rounded: return "LXGWMarkerGothic-Regular"
-            case .smiley: return "LXGWFasmartGothic"
+            case .kaiti: return "CineDeck-UKaiCN"
+            case .wenkai: return "LXGWWenKaiLite-Medium"
+            case .songti: return "CineDeck-UMingCN"
+            case .fangsong: return "CineDeck-Fangsong"
+            case .rounded: return "CineDeck-Yuanti"
+            case .smiley: return "CineDeck-Smiley"
             }
         }
 
@@ -64,22 +68,24 @@ public struct SubtitleStyleConfig: Codable, Sendable, Equatable {
         public var libassFamilyName: String {
             switch self {
             case .system, .heavy: return "PingFang SC"
-            case .kaiti: return "LXGW WenKai Lite"
-            case .songti: return "LXGW Neo ZhiSong Plus"
-            case .fangsong: return "Zhuque Fangsong (technical preview)"
-            case .rounded: return "LXGW Marker Gothic"
-            case .smiley: return "LXGW Fasmart Gothic"
+            case .kaiti: return "CineDeck UKai CN"
+            case .wenkai: return "LXGW WenKai Lite"
+            case .songti: return "CineDeck UMing CN"
+            case .fangsong: return "CineDeck Fangsong"
+            case .rounded: return "CineDeck Yuanti"
+            case .smiley: return "CineDeck Smiley"
             }
         }
 
-        /// 同笔形/风格近似的全字库回退顺序，确保生僻日文人名汉字/异体字绝不突兀退回系统无衬线黑体。
+        /// 同笔形/风格近似的全字库回退顺序，确保生僻日文人名汉字/扩展字符绝不突兀退回系统无衬线黑体。
         public var fallbackOrder: [FontFamily] {
             switch self {
-            case .kaiti: return [.songti, .rounded]
-            case .songti: return [.kaiti, .rounded]
+            case .kaiti: return [.wenkai, .songti]
+            case .wenkai: return [.kaiti, .songti]
+            case .songti: return [.kaiti, .wenkai]
             case .fangsong: return [.songti, .kaiti]
-            case .rounded: return [.smiley, .kaiti]
-            case .smiley: return [.rounded, .kaiti]
+            case .rounded: return [.smiley, .wenkai]
+            case .smiley: return [.rounded, .wenkai]
             case .system, .heavy: return []
             }
         }

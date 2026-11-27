@@ -60,7 +60,7 @@ jobs:
           test -d "$APP/Frameworks/FSPlayer.framework" || { echo "::error::FSPlayer.framework not embedded"; exit 1; }
           test -d "$APP/Frameworks/AMSMB2.framework" || { ls "$APP/Frameworks"; echo "::error::AMSMB2.framework not embedded"; exit 1; }
           test -f "$APP/Assets.car" || { ls -la "$APP"; echo "::error::Assets.car (tvOS App Icon) missing"; exit 1; }
-          for f in CineDeck-Kaiti.ttf CineDeck-Songti.ttf CineDeck-Fangsong.ttf CineDeck-Yuanti.ttf CineDeck-Smiley.ttf; do
+          for f in CineDeck-Kaiti.ttf CineDeck-WenKai.ttf CineDeck-Songti.ttf CineDeck-Fangsong.ttf CineDeck-Yuanti.ttf CineDeck-Smiley.ttf; do
             test -f "$APP/Fonts/$f" || { ls -la "$APP" "$APP/Fonts" 2>/dev/null || true; echo "::error::Bundled Chinese font missing: $f"; exit 1; }
           done
           /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$APP/Info.plist"

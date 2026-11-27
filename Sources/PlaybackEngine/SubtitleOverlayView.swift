@@ -4,7 +4,7 @@ import SubtitleKit
 /// SwiftUI 实时文本字幕渲染层：
 /// - 贴合 1080p 真实底边（默认距底 8px），不被 tvOS Safe Area 误顶高；
 /// - 支持设置面板开启时将 `virtualBottomFloor` 设为设置栏顶部高度，使字幕实时落在“设置栏上沿 + bottomInset”位置；
-/// - 支持 7 款真实中文字体、10 种配色、字号、位置、描边、底框透明度、对齐与时间轴偏移实时生效。
+/// - 支持 8 款真实中文字体、10 种配色、字号、位置、描边、底框透明度、对齐与时间轴偏移实时生效。
 public struct SubtitleOverlayView: View {
     public let cues: [SubtitleCue]
     public let currentTime: TimeInterval

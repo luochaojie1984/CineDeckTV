@@ -270,7 +270,7 @@ public struct PlayerBottomSettingsPanel: View {
         }
     }
 
-    // MARK: - 分类 2：字幕轨道 + 7 款真实中文字体 + 位置 + 大小 + 10 色 + 描边底框同步
+    // MARK: - 分类 2：字幕轨道 + 8 款真实中文字体 + 位置 + 大小 + 10 色 + 描边底框同步
 
     private var subtitlesRows: some View {
         VStack(alignment: .leading, spacing: 11) {
@@ -317,21 +317,21 @@ public struct PlayerBottomSettingsPanel: View {
             }
             .focusSection()
 
-            // Row 2: 7 款真实中文字体 + 位置（默认 8px，设置栏上沿即画面底边）+ 大小
+            // Row 2: 8 款真实中文字体 + 位置（默认 8px，设置栏上沿即画面底边）+ 大小
             HStack(spacing: 12) {
                 rowLabel("字体位置")
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 8) {
                         ForEach(SubtitleStyleConfig.FontFamily.allCases, id: \.self) { family in
                             Button {
                                 onInteraction()
                                 style.fontFamily = family
                             } label: {
                                 Text(family.displayName)
-                                    .font(SubtitleFontRegistry.shared.resolveSwiftUIFont(for: family, size: 21))
+                                    .font(SubtitleFontRegistry.shared.resolveSwiftUIFont(for: family, size: 20))
                                     .lineLimit(1)
                                     .fixedSize(horizontal: true, vertical: false)
-                                    .padding(.horizontal, 18)
+                                    .padding(.horizontal, 14)
                                     .padding(.vertical, 10)
                             }
                             .buttonStyle(TVPlayerOptionButtonStyle(isSelected: style.fontFamily == family, accentTint: TVTokens.Color.amber, cornerRadius: 999))

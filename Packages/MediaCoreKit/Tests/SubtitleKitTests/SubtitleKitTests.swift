@@ -65,8 +65,9 @@ struct SubtitleKitTests {
 
     @Test("7 款中文字体（含楷体/宋体/仿宋/圆体/电影艺术黑）与 10 种配色及旧版 rawValue 兼容")
     func chineseFontsAndLegacyMapping() throws {
-        #expect(SubtitleStyleConfig.FontFamily.allCases.count == 7)
+        #expect(SubtitleStyleConfig.FontFamily.allCases.count == 8)
         #expect(SubtitleStyleConfig.FontFamily.allCases.contains(.kaiti))
+        #expect(SubtitleStyleConfig.FontFamily.allCases.contains(.wenkai))
         #expect(SubtitleStyleConfig.FontFamily.allCases.contains(.songti))
         #expect(SubtitleStyleConfig.FontFamily.allCases.contains(.fangsong))
         #expect(SubtitleStyleConfig.FontFamily.allCases.contains(.rounded))
@@ -97,18 +98,21 @@ struct SubtitleKitTests {
         #expect(decoded.bottomInset == 8)
     }
 
-    @Test("内置字体 PostScript、libass 家族名与风格回退链完整准确")
+    @Test("8 款字体元数据（原字体补全版 + 霞鹜文楷）与风格回退链完整准确")
     func fontMetadataAndFallbackChain() {
-        #expect(SubtitleStyleConfig.FontFamily.kaiti.postScriptName == "LXGWWenKaiLite-Medium")
-        #expect(SubtitleStyleConfig.FontFamily.kaiti.libassFamilyName == "LXGW WenKai Lite")
-        #expect(SubtitleStyleConfig.FontFamily.songti.postScriptName == "LXGWNeoZhiSongPlus")
-        #expect(SubtitleStyleConfig.FontFamily.songti.libassFamilyName == "LXGW Neo ZhiSong Plus")
-        #expect(SubtitleStyleConfig.FontFamily.fangsong.postScriptName == "ZhuqueFangsong-Regular")
-        #expect(SubtitleStyleConfig.FontFamily.fangsong.libassFamilyName == "Zhuque Fangsong (technical preview)")
-        #expect(SubtitleStyleConfig.FontFamily.rounded.postScriptName == "LXGWMarkerGothic-Regular")
-        #expect(SubtitleStyleConfig.FontFamily.rounded.libassFamilyName == "LXGW Marker Gothic")
-        #expect(SubtitleStyleConfig.FontFamily.smiley.postScriptName == "LXGWFasmartGothic")
-        #expect(SubtitleStyleConfig.FontFamily.smiley.libassFamilyName == "LXGW Fasmart Gothic")
+        #expect(SubtitleStyleConfig.FontFamily.kaiti.postScriptName == "CineDeck-UKaiCN")
+        #expect(SubtitleStyleConfig.FontFamily.kaiti.libassFamilyName == "CineDeck UKai CN")
+        #expect(SubtitleStyleConfig.FontFamily.wenkai.postScriptName == "LXGWWenKaiLite-Medium")
+        #expect(SubtitleStyleConfig.FontFamily.wenkai.libassFamilyName == "LXGW WenKai Lite")
+        #expect(SubtitleStyleConfig.FontFamily.wenkai.bundledFileName == "CineDeck-WenKai.ttf")
+        #expect(SubtitleStyleConfig.FontFamily.songti.postScriptName == "CineDeck-UMingCN")
+        #expect(SubtitleStyleConfig.FontFamily.songti.libassFamilyName == "CineDeck UMing CN")
+        #expect(SubtitleStyleConfig.FontFamily.fangsong.postScriptName == "CineDeck-Fangsong")
+        #expect(SubtitleStyleConfig.FontFamily.fangsong.libassFamilyName == "CineDeck Fangsong")
+        #expect(SubtitleStyleConfig.FontFamily.rounded.postScriptName == "CineDeck-Yuanti")
+        #expect(SubtitleStyleConfig.FontFamily.rounded.libassFamilyName == "CineDeck Yuanti")
+        #expect(SubtitleStyleConfig.FontFamily.smiley.postScriptName == "CineDeck-Smiley")
+        #expect(SubtitleStyleConfig.FontFamily.smiley.libassFamilyName == "CineDeck Smiley")
 
         for family in SubtitleStyleConfig.FontFamily.allCases where family.bundledFileName != nil {
             #expect(!family.fallbackOrder.isEmpty)

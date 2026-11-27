@@ -6,7 +6,7 @@ import os
 import SubtitleKit
 
 /// 运行时中文字体注册与解析中心：
-/// - 启动时自动注册 `CineDeckTV.app/Fonts/` 中的 5 款开源中文字体（楷体/宋体/仿宋/圆体/电影艺术黑）；
+/// - 启动时自动注册 `CineDeckTV.app/Fonts/` 中的 6 款全字库开源中文字体（经典楷体/霞鹜文楷/书香宋体/朱雀仿宋/柔和圆体/电影艺术黑）；
 /// - 通过 CoreText 直接提取每个 TTF 的真实 PostScript 名，确保 `Font(uiFont)` 在 tvOS 上 100% 实时切换出真实中文笔形，绝不误退回系统默认黑体。
 public final class SubtitleFontRegistry: @unchecked Sendable {
     public static let shared = SubtitleFontRegistry()

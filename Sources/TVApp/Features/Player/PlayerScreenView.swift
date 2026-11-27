@@ -131,7 +131,7 @@ public struct PlayerScreenView: View {
 
             if previewOpenHUD {
                 SubtitleOverlayView(
-                    cues: [SubtitleCue(start: 0, end: 99999, text: "不要温顺地走进那个良夜 · 橋本環奈 桜沢優")],
+                    cues: [SubtitleCue(start: 0, end: 99999, text: "不要温顺地走进那个良夜 · 橋本環奈 桜沢優 満島黒木")],
                     currentTime: 100,
                     style: subtitleStyle,
                     virtualBottomFloor: subtitleVirtualBottomFloor
