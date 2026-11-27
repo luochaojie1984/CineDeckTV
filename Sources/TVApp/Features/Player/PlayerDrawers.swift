@@ -24,10 +24,10 @@ public enum ActivePlayerDrawer: String, Sendable, CaseIterable {
     }
 }
 
-/// 播放器贴底液态玻璃设置面板：
-/// - 打开或切换分类时立即自动高亮首个可调节选项（无需先按上下左右找焦点）；
-/// - 内置 7 款真实中文字体（含楷体/宋体/仿宋/圆体/电影艺术黑）与 10 种字幕配色，并附带实时字形预览条；
-/// - 所有设置行横向 `.focusSection()` 排布，Siri Remote 左右键顺畅调节全部参数，严格位于视频画框内。
+/// 播放器贴底圆角液态玻璃设置面板：
+/// - 加大加圆润的 10-foot 胶囊选项与字号，打开或切换分类时立即自动高亮首个可调节选项；
+/// - 调整字幕时直接以设置栏上沿作为画面虚拟底边（默认距底 8px），实时看到真实字幕位置与字体/颜色变化；
+/// - 每行使用横向 `.focusSection()` + `ScrollView(.horizontal)`，Siri Remote 左右/上下键顺畅调节全部参数且严格位于视频画框内。
 public struct PlayerBottomSettingsPanel: View {
     private enum PanelFocusItem: Hashable {
         case tab(ActivePlayerDrawer)
@@ -95,11 +95,11 @@ public struct PlayerBottomSettingsPanel: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: 14) {
             headerTabsRow
                 .focusSection()
 
-            Divider().overlay(Color.white.opacity(0.16))
+            Divider().overlay(Color.white.opacity(0.18))
 
             Group {
                 switch activeTab {
@@ -112,10 +112,10 @@ public struct PlayerBottomSettingsPanel: View {
                 }
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 15)
+        .padding(.horizontal, 28)
+        .padding(.vertical, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .tvGlassSurface(cornerRadius: 22, clear: false, tint: accent.opacity(0.08))
+        .tvGlassSurface(cornerRadius: 30, clear: false, tint: accent.opacity(0.08))
         .defaultFocus($panelFocus, defaultFocusTarget(for: activeTab))
         .onAppear {
             claimInitialFocus(for: activeTab)
@@ -127,10 +127,10 @@ public struct PlayerBottomSettingsPanel: View {
         }
     }
 
-    // MARK: - 顶部横向分类切换栏 + 字幕实时效果预览
+    // MARK: - 顶部横向分类切换栏 + 状态指示
 
     private var headerTabsRow: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             ForEach(ActivePlayerDrawer.allCases, id: \.self) { tab in
                 let selected = (activeTab == tab)
                 Button {
@@ -140,63 +140,33 @@ public struct PlayerBottomSettingsPanel: View {
                     }
                 } label: {
                     Label(tab.title, systemImage: tab.icon)
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 21, weight: .bold))
                         .lineLimit(1)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 11)
                 }
-                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: selected, accentTint: tabAccent(tab), cornerRadius: 12))
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: selected, accentTint: tabAccent(tab), cornerRadius: 999))
                 .focused($panelFocus, equals: .tab(tab))
             }
 
-            Spacer(minLength: 10)
+            Spacer(minLength: 12)
 
-            if activeTab == .subtitles {
-                liveSubtitleInlinePreview
-            } else {
-                Text(statusSummary)
-                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(TVTokens.Color.secondaryText)
-                    .lineLimit(1)
-            }
+            Text(statusSummary)
+                .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                .foregroundStyle(TVTokens.Color.secondaryText)
+                .lineLimit(1)
 
             Button {
                 onClose()
             } label: {
                 Label("收起", systemImage: "chevron.down")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                     .lineLimit(1)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 11)
             }
-            .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: accent, cornerRadius: 12))
+            .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: accent, cornerRadius: 999))
             .focused($panelFocus, equals: .closeButton)
-        }
-    }
-
-    /// 字幕实时效果缩略预览条：即使影片当前无台词，点击任意字体/颜色/描边/底框都能立刻看到真实中文字形变化！
-    private var liveSubtitleInlinePreview: some View {
-        let fg = Color(panelHex: style.foregroundHex)
-        let stroke = CGFloat(min(4, max(0, style.outlineWidth)))
-        let font = SubtitleFontRegistry.shared.resolveSwiftUIFont(for: style.fontFamily, size: 20)
-
-        return HStack(spacing: 10) {
-            Text("\(style.fontFamily.displayName) · \(Int(style.fontSize))pt")
-                .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                .foregroundStyle(TVTokens.Color.secondaryText)
-
-            Text("示例：不要温顺地走进那个良夜")
-                .id("inline-\(style.fontFamily.rawValue)-\(style.foregroundHex)-\(Int(style.outlineWidth * 10))")
-                .font(font)
-                .foregroundStyle(fg)
-                .shadow(color: .black.opacity(stroke > 0.1 ? 0.95 : 0.4), radius: max(1, stroke * 0.6), x: 0, y: 1)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .fill(Color.black.opacity(max(0.16, style.backgroundOpacity)))
-                )
-                .lineLimit(1)
         }
     }
 
@@ -206,7 +176,7 @@ public struct PlayerBottomSettingsPanel: View {
             let dec = coordinator.isHardwareDecode ? "硬解 HW" : "软解 SW"
             return "当前：\(coordinator.activeEngine.displayName) · \(dec) · \(String(format: "%.2gx", coordinator.currentPlaybackRate))"
         case .subtitles:
-            return "\(style.fontFamily.displayName) · \(Int(style.fontSize))pt · 底距 \(Int(style.bottomInset))"
+            return "\(style.fontFamily.displayName) · \(Int(style.fontSize))pt · 距底 \(Int(style.bottomInset))px（上沿为底）"
         case .audio:
             return "音轨 \(max(1, coordinator.audioTracks.count)) 条 · 统计 \(showTechStats ? "开" : "关")"
         }
@@ -223,84 +193,92 @@ public struct PlayerBottomSettingsPanel: View {
     // MARK: - 分类 1：解码方式 + 播放器内核 + 倍速 + 画面比例
 
     private var decodeAndEngineRows: some View {
-        VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                rowLabel("解码方式")
-                optionPill("硬件解码", selected: coordinator.isHardwareDecode, tint: TVTokens.Color.emerald) {
-                    onInteraction()
-                    onToggleHardwareDecode(true)
-                }
-                .focused($panelFocus, equals: .decodeHardware)
+                rowLabel("解码内核")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        optionPill("硬件解码", selected: coordinator.isHardwareDecode, tint: TVTokens.Color.emerald) {
+                            onInteraction()
+                            onToggleHardwareDecode(true)
+                        }
+                        .focused($panelFocus, equals: .decodeHardware)
 
-                optionPill("软件解码", selected: !coordinator.isHardwareDecode, tint: TVTokens.Color.amber) {
-                    onInteraction()
-                    onToggleHardwareDecode(false)
-                }
+                        optionPill("软件解码", selected: !coordinator.isHardwareDecode, tint: TVTokens.Color.amber) {
+                            onInteraction()
+                            onToggleHardwareDecode(false)
+                        }
 
-                rowDivider
+                        rowDivider
 
-                rowLabel("播放内核")
-                optionPill("自动 (KS优先)", selected: coordinator.currentPreference == .automatic, tint: TVTokens.Color.accent) {
-                    onInteraction()
-                    onSwitchEngine(.automatic)
+                        optionPill("自动 (KS优先)", selected: coordinator.currentPreference == .automatic, tint: TVTokens.Color.accent) {
+                            onInteraction()
+                            onSwitchEngine(.automatic)
+                        }
+                        optionPill("KSPlayer", selected: coordinator.activeEngine == .ksplayer && coordinator.currentPreference == .ksplayer, tint: TVTokens.Color.accent) {
+                            onInteraction()
+                            onSwitchEngine(.ksplayer)
+                        }
+                        optionPill("FSPlayer", selected: coordinator.activeEngine == .fsplayer && coordinator.currentPreference == .fsplayer, tint: TVTokens.Color.emerald) {
+                            onInteraction()
+                            onSwitchEngine(.fsplayer)
+                        }
+                        optionPill("AVPlayer", selected: coordinator.activeEngine == .avplayer && coordinator.currentPreference == .avplayer, tint: TVTokens.Color.violet) {
+                            onInteraction()
+                            onSwitchEngine(.avplayer)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 2)
                 }
-                optionPill("KSPlayer", selected: coordinator.activeEngine == .ksplayer && coordinator.currentPreference == .ksplayer, tint: TVTokens.Color.accent) {
-                    onInteraction()
-                    onSwitchEngine(.ksplayer)
-                }
-                optionPill("FSPlayer", selected: coordinator.activeEngine == .fsplayer && coordinator.currentPreference == .fsplayer, tint: TVTokens.Color.emerald) {
-                    onInteraction()
-                    onSwitchEngine(.fsplayer)
-                }
-                optionPill("AVPlayer", selected: coordinator.activeEngine == .avplayer && coordinator.currentPreference == .avplayer, tint: TVTokens.Color.violet) {
-                    onInteraction()
-                    onSwitchEngine(.avplayer)
-                }
-                Spacer(minLength: 0)
             }
             .focusSection()
 
-            HStack(spacing: 10) {
-                rowLabel("播放倍速")
-                ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0], id: \.self) { rate in
-                    optionPill(
-                        "\(String(format: "%.2g", rate))x",
-                        selected: abs(coordinator.currentPlaybackRate - rate) < 0.03,
-                        tint: TVTokens.Color.accent
-                    ) {
-                        onInteraction()
-                        onChangeRate(rate)
-                    }
-                }
+            HStack(spacing: 12) {
+                rowLabel("倍速比例")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0], id: \.self) { rate in
+                            optionPill(
+                                "\(String(format: "%.2g", rate))x",
+                                selected: abs(coordinator.currentPlaybackRate - rate) < 0.03,
+                                tint: TVTokens.Color.accent
+                            ) {
+                                onInteraction()
+                                onChangeRate(rate)
+                            }
+                        }
 
-                rowDivider
+                        rowDivider
 
-                rowLabel("画面比例")
-                ForEach(ScalingMode.allCases, id: \.self) { mode in
-                    optionPill(
-                        mode.displayName,
-                        selected: coordinator.currentScalingMode == mode,
-                        tint: TVTokens.Color.violet
-                    ) {
-                        onInteraction()
-                        onChangeScaling(mode)
+                        ForEach(ScalingMode.allCases, id: \.self) { mode in
+                            optionPill(
+                                mode.displayName,
+                                selected: coordinator.currentScalingMode == mode,
+                                tint: TVTokens.Color.violet
+                            ) {
+                                onInteraction()
+                                onChangeScaling(mode)
+                            }
+                        }
                     }
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 2)
                 }
-                Spacer(minLength: 0)
             }
             .focusSection()
         }
     }
 
-    // MARK: - 分类 2：字幕轨道 + 7 款真实中文字体 + 10 种颜色 + 字号/位置/描边/底框/对齐/同步
+    // MARK: - 分类 2：字幕轨道 + 7 款真实中文字体 + 位置 + 大小 + 10 色 + 描边底框同步
 
     private var subtitlesRows: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            // Row 1: 字幕轨道选择（横向滚动）
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 11) {
+            // Row 1: 字幕轨道选择
+            HStack(spacing: 12) {
                 rowLabel("字幕轨道")
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 12) {
                         optionPill(
                             "关闭字幕",
                             selected: activeExternalPath == nil && activeEmbeddedSubID == nil,
@@ -333,152 +311,152 @@ public struct PlayerBottomSettingsPanel: View {
                             }
                         }
                     }
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 4)
                     .padding(.horizontal, 2)
                 }
             }
             .focusSection()
 
-            // Row 2: 7 款真实中文字体（每个按钮均以对应真实中文字体渲染！）+ 字号 + 位置
-            HStack(spacing: 8) {
-                rowLabel("字体")
+            // Row 2: 7 款真实中文字体 + 位置（默认 8px，设置栏上沿即画面底边）+ 大小
+            HStack(spacing: 12) {
+                rowLabel("字体位置")
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         ForEach(SubtitleStyleConfig.FontFamily.allCases, id: \.self) { family in
                             Button {
                                 onInteraction()
                                 style.fontFamily = family
                             } label: {
                                 Text(family.displayName)
-                                    .font(SubtitleFontRegistry.shared.resolveSwiftUIFont(for: family, size: 17))
+                                    .font(SubtitleFontRegistry.shared.resolveSwiftUIFont(for: family, size: 21))
                                     .lineLimit(1)
                                     .fixedSize(horizontal: true, vertical: false)
-                                    .padding(.horizontal, 13)
-                                    .padding(.vertical, 7)
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 10)
                             }
-                            .buttonStyle(TVPlayerOptionButtonStyle(isSelected: style.fontFamily == family, accentTint: TVTokens.Color.amber, cornerRadius: 11))
+                            .buttonStyle(TVPlayerOptionButtonStyle(isSelected: style.fontFamily == family, accentTint: TVTokens.Color.amber, cornerRadius: 999))
                             .focused($panelFocus, equals: .fontOption(family))
                         }
+
+                        rowDivider
+
+                        optionPill("下移", selected: false, tint: TVTokens.Color.emerald) {
+                            onInteraction()
+                            style.bottomInset = max(0, style.bottomInset - 4)
+                        }
+                        optionPill("距底 \(Int(style.bottomInset))px", selected: abs(style.bottomInset - 8) < 0.5, tint: TVTokens.Color.emerald) {
+                            onInteraction()
+                            style.bottomInset = 8
+                        }
+                        optionPill("上移", selected: false, tint: TVTokens.Color.emerald) {
+                            onInteraction()
+                            style.bottomInset = min(240, style.bottomInset + 4)
+                        }
+
+                        rowDivider
+
+                        optionPill("A-", selected: false, tint: TVTokens.Color.accent) {
+                            onInteraction()
+                            style.fontSize = max(24, style.fontSize - 4)
+                        }
+                        Text("\(Int(style.fontSize))pt")
+                            .font(.system(size: 19, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.white)
+                            .frame(minWidth: 56)
+                        optionPill("A+", selected: false, tint: TVTokens.Color.accent) {
+                            onInteraction()
+                            style.fontSize = min(76, style.fontSize + 4)
+                        }
                     }
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 4)
                     .padding(.horizontal, 2)
-                }
-
-                rowDivider
-
-                rowLabel("大小")
-                optionPill("A-", selected: false, tint: TVTokens.Color.accent) {
-                    onInteraction()
-                    style.fontSize = max(24, style.fontSize - 4)
-                }
-                Text("\(Int(style.fontSize))pt")
-                    .font(.system(size: 15, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white)
-                    .frame(minWidth: 46)
-                optionPill("A+", selected: false, tint: TVTokens.Color.accent) {
-                    onInteraction()
-                    style.fontSize = min(76, style.fontSize + 4)
-                }
-
-                rowDivider
-
-                rowLabel("位置")
-                optionPill("下移", selected: false, tint: TVTokens.Color.emerald) {
-                    onInteraction()
-                    style.bottomInset = max(12, style.bottomInset - 16)
-                }
-                Text("\(Int(style.bottomInset))")
-                    .font(.system(size: 15, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.white)
-                    .frame(minWidth: 34)
-                optionPill("上移", selected: false, tint: TVTokens.Color.emerald) {
-                    onInteraction()
-                    style.bottomInset = min(260, style.bottomInset + 16)
                 }
             }
             .focusSection()
 
-            // Row 3: 10 种字幕颜色（横向平滑滚动，支持左右键顺畅选色）
-            HStack(spacing: 10) {
-                rowLabel("颜色")
+            // Row 3: 10 种字幕颜色
+            HStack(spacing: 12) {
+                rowLabel("字幕配色")
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         ForEach(SubtitleStyleConfig.colorPresets) { preset in
                             colorPill(preset.name, hex: preset.hex)
                         }
                     }
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 4)
                     .padding(.horizontal, 2)
                 }
             }
             .focusSection()
 
             // Row 4: 描边 + 底框 + 对齐 + 时间同步偏移
-            HStack(spacing: 8) {
-                rowLabel("描边")
-                ForEach(Self.outlinePresets) { preset in
-                    optionPill(preset.label, selected: abs(style.outlineWidth - preset.value) < 0.6, tint: TVTokens.Color.accent) {
-                        onInteraction()
-                        style.outlineWidth = preset.value
+            HStack(spacing: 12) {
+                rowLabel("描边同步")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(Self.outlinePresets) { preset in
+                            optionPill(preset.label, selected: abs(style.outlineWidth - preset.value) < 0.6, tint: TVTokens.Color.accent) {
+                                onInteraction()
+                                style.outlineWidth = preset.value
+                            }
+                        }
+
+                        rowDivider
+
+                        ForEach(Self.backgroundPresets) { preset in
+                            optionPill(preset.label, selected: abs(style.backgroundOpacity - preset.value) < 0.14, tint: TVTokens.Color.violet) {
+                                onInteraction()
+                                style.backgroundOpacity = preset.value
+                            }
+                        }
+
+                        rowDivider
+
+                        ForEach(SubtitleStyleConfig.HorizontalAlignment.allCases, id: \.self) { align in
+                            optionPill(align.displayName, selected: style.alignment == align, tint: TVTokens.Color.accent) {
+                                onInteraction()
+                                style.alignment = align
+                            }
+                        }
+
+                        rowDivider
+
+                        optionPill("-0.5s", selected: false, tint: TVTokens.Color.amber) {
+                            onInteraction()
+                            style.offsetSeconds = max(-30, style.offsetSeconds - 0.5)
+                        }
+                        optionPill("-0.1s", selected: false, tint: TVTokens.Color.amber) {
+                            onInteraction()
+                            style.offsetSeconds = max(-30, style.offsetSeconds - 0.1)
+                        }
+                        optionPill(String(format: "归零 %+.1fs", style.offsetSeconds), selected: abs(style.offsetSeconds) < 0.05, tint: TVTokens.Color.emerald) {
+                            onInteraction()
+                            style.offsetSeconds = 0
+                        }
+                        optionPill("+0.1s", selected: false, tint: TVTokens.Color.amber) {
+                            onInteraction()
+                            style.offsetSeconds = min(30, style.offsetSeconds + 0.1)
+                        }
+                        optionPill("+0.5s", selected: false, tint: TVTokens.Color.amber) {
+                            onInteraction()
+                            style.offsetSeconds = min(30, style.offsetSeconds + 0.5)
+                        }
+
+                        if coordinator.activeEngine == .fsplayer {
+                            rowDivider
+                            optionPill(
+                                style.forceCustomStyle ? "自定义层：开" : "libass",
+                                selected: style.forceCustomStyle,
+                                tint: TVTokens.Color.violet
+                            ) {
+                                onInteraction()
+                                style.forceCustomStyle.toggle()
+                            }
+                        }
                     }
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 2)
                 }
-
-                rowDivider
-
-                rowLabel("底框")
-                ForEach(Self.backgroundPresets) { preset in
-                    optionPill(preset.label, selected: abs(style.backgroundOpacity - preset.value) < 0.14, tint: TVTokens.Color.violet) {
-                        onInteraction()
-                        style.backgroundOpacity = preset.value
-                    }
-                }
-
-                rowDivider
-
-                rowLabel("对齐")
-                ForEach(SubtitleStyleConfig.HorizontalAlignment.allCases, id: \.self) { align in
-                    optionPill(align.displayName, selected: style.alignment == align, tint: TVTokens.Color.accent) {
-                        onInteraction()
-                        style.alignment = align
-                    }
-                }
-
-                rowDivider
-
-                rowLabel("同步")
-                optionPill("-0.5s", selected: false, tint: TVTokens.Color.amber) {
-                    onInteraction()
-                    style.offsetSeconds = max(-30, style.offsetSeconds - 0.5)
-                }
-                optionPill("-0.1s", selected: false, tint: TVTokens.Color.amber) {
-                    onInteraction()
-                    style.offsetSeconds = max(-30, style.offsetSeconds - 0.1)
-                }
-                optionPill(String(format: "归零 %+.1fs", style.offsetSeconds), selected: abs(style.offsetSeconds) < 0.05, tint: TVTokens.Color.emerald) {
-                    onInteraction()
-                    style.offsetSeconds = 0
-                }
-                optionPill("+0.1s", selected: false, tint: TVTokens.Color.amber) {
-                    onInteraction()
-                    style.offsetSeconds = min(30, style.offsetSeconds + 0.1)
-                }
-                optionPill("+0.5s", selected: false, tint: TVTokens.Color.amber) {
-                    onInteraction()
-                    style.offsetSeconds = min(30, style.offsetSeconds + 0.5)
-                }
-
-                if coordinator.activeEngine == .fsplayer {
-                    rowDivider
-                    optionPill(
-                        style.forceCustomStyle ? "自定义层：开" : "libass",
-                        selected: style.forceCustomStyle,
-                        tint: TVTokens.Color.violet
-                    ) {
-                        onInteraction()
-                        style.forceCustomStyle.toggle()
-                    }
-                }
-                Spacer(minLength: 0)
             }
             .focusSection()
         }
@@ -487,8 +465,8 @@ public struct PlayerBottomSettingsPanel: View {
     // MARK: - 分类 3：音轨与实时统计
 
     private var audioAndStatsRows: some View {
-        VStack(alignment: .leading, spacing: 11) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
                 rowLabel("音轨选择")
                 if coordinator.audioTracks.isEmpty {
                     optionPill("默认音轨", selected: true, tint: TVTokens.Color.violet) {
@@ -497,7 +475,7 @@ public struct PlayerBottomSettingsPanel: View {
                     .focused($panelFocus, equals: .audioFirst)
                 } else {
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
+                        HStack(spacing: 12) {
                             ForEach(Array(coordinator.audioTracks.enumerated()), id: \.element.id) { idx, track in
                                 let isActive = (activeAudioTrackID == track.id) || (activeAudioTrackID == nil && track.isSelected)
                                 if idx == 0 {
@@ -514,7 +492,7 @@ public struct PlayerBottomSettingsPanel: View {
                                 }
                             }
                         }
-                        .padding(.vertical, 3)
+                        .padding(.vertical, 4)
                         .padding(.horizontal, 2)
                     }
                 }
@@ -534,33 +512,34 @@ public struct PlayerBottomSettingsPanel: View {
         }
     }
 
-    // MARK: - 紧凑辅助控件
+    // MARK: - 大字号圆边胶囊控件
 
     private func rowLabel(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 16, weight: .bold))
+            .font(.system(size: 19, weight: .bold))
             .foregroundStyle(TVTokens.Color.secondaryText)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
+            .frame(minWidth: 84, alignment: .leading)
     }
 
     private var rowDivider: some View {
         Rectangle()
-            .fill(Color.white.opacity(0.18))
-            .frame(width: 1, height: 22)
-            .padding(.horizontal, 2)
+            .fill(Color.white.opacity(0.20))
+            .frame(width: 1, height: 28)
+            .padding(.horizontal, 4)
     }
 
     private func optionPill(_ title: String, selected: Bool, tint: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 19, weight: .semibold))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
         }
-        .buttonStyle(TVPlayerOptionButtonStyle(isSelected: selected, accentTint: tint, cornerRadius: 11))
+        .buttonStyle(TVPlayerOptionButtonStyle(isSelected: selected, accentTint: tint, cornerRadius: 999))
     }
 
     private func colorPill(_ title: String, hex: String) -> some View {
@@ -570,19 +549,20 @@ public struct PlayerBottomSettingsPanel: View {
             onInteraction()
             style.foregroundHex = hex
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Circle()
                     .fill(swatch)
-                    .frame(width: 13, height: 13)
+                    .frame(width: 16, height: 16)
                     .overlay(Circle().strokeBorder(.black.opacity(0.45), lineWidth: 1))
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 19, weight: .semibold))
                     .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
-        .buttonStyle(TVPlayerOptionButtonStyle(isSelected: selected, accentTint: swatch, cornerRadius: 11))
+        .buttonStyle(TVPlayerOptionButtonStyle(isSelected: selected, accentTint: swatch, cornerRadius: 999))
     }
 
     private struct NumericPreset: Identifiable {
@@ -639,11 +619,11 @@ public struct TechStatsHUDPill: View {
             dot
             Text("丢帧 \(stats.droppedFrames)")
         }
-        .font(.system(size: 15, weight: .semibold, design: .monospaced))
+        .font(.system(size: 16, weight: .semibold, design: .monospaced))
         .lineLimit(1)
         .fixedSize(horizontal: true, vertical: false)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 11)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 12)
         .tvGlassSurface(cornerRadius: TVTokens.Radius.capsule, clear: true)
     }
 

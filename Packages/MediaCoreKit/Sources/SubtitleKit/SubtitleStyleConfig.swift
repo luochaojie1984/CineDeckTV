@@ -127,7 +127,7 @@ public struct SubtitleStyleConfig: Codable, Sendable, Equatable {
         outlineHex: String = "#000000",
         outlineWidth: Double = 2.0,
         backgroundOpacity: Double = 0.32,
-        bottomInset: Double = 56,
+        bottomInset: Double = 8,
         offsetSeconds: Double = 0,
         alignment: HorizontalAlignment = .center,
         forceCustomStyle: Bool = false
@@ -152,7 +152,7 @@ public struct SubtitleStyleConfig: Codable, Sendable, Equatable {
         outlineHex = try c.decodeIfPresent(String.self, forKey: .outlineHex) ?? "#000000"
         outlineWidth = try c.decodeIfPresent(Double.self, forKey: .outlineWidth) ?? 2.0
         backgroundOpacity = try c.decodeIfPresent(Double.self, forKey: .backgroundOpacity) ?? 0.32
-        bottomInset = try c.decodeIfPresent(Double.self, forKey: .bottomInset) ?? 56
+        bottomInset = try c.decodeIfPresent(Double.self, forKey: .bottomInset) ?? 8
         offsetSeconds = try c.decodeIfPresent(Double.self, forKey: .offsetSeconds) ?? 0
         alignment = try c.decodeIfPresent(HorizontalAlignment.self, forKey: .alignment) ?? .center
         forceCustomStyle = try c.decodeIfPresent(Bool.self, forKey: .forceCustomStyle) ?? false

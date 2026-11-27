@@ -66,7 +66,7 @@ public struct AppSettingsView: View {
                 Spacer()
                 HStack(spacing: 10) {
                     Circle().fill(TVTokens.Color.emerald).frame(width: 8, height: 8)
-                    Text("CineDeckTV 0.4.1 · KS + FS + AV")
+                    Text("CineDeckTV 0.4.2 · KS + FS + AV")
                         .font(.system(size: 18, weight: .semibold, design: .monospaced))
                         .foregroundStyle(TVTokens.Color.secondaryText)
                 }

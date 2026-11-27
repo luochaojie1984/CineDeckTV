@@ -290,7 +290,6 @@ public final class PlaybackCoordinator: ObservableObject {
             guard let self, self.activeEngine == .ksplayer else { return }
             self.currentTime = pos
             if dur > 0 { self.duration = dur }
-            self.isPlaying = self.ksEngine.isPlaying
         }
         ksEngine.onTracksChanged = { [weak self] audio, subs in
             guard let self, self.activeEngine == .ksplayer else { return }

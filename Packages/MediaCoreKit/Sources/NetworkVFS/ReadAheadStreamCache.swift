@@ -16,10 +16,10 @@ public struct ReadAheadCacheConfig: Sendable {
     public var maxProtectedEdgeBytes: Int = 16 * 1024 * 1024
     /// 头尾保护下限：4 MB。
     public var minProtectedEdgeBytes: Int = 4 * 1024 * 1024
-    /// 快进模式单次微缓存：512 KB。
-    public var scrubBypassChunkSize: Int = 512 * 1024
-    /// 顺序播放向前并发预读块数（4 块并发，对齐 AuraTV 流畅高码率吞吐）。
-    public var readAheadChunkCount: Int = 4
+    /// 快进模式单次微缓存：384 KB（单次 SMB 请求命中 98% I 帧且不挤压常规缓存）。
+    public var scrubBypassChunkSize: Int = 384 * 1024
+    /// 顺序播放向前预读块数（单队列顺序预读 2 块 = 4 MB，避免阻塞串行 SMB2 readQueue）。
+    public var readAheadChunkCount: Int = 2
     /// 大跨度随机跳判定阈值（触发立即取消旧预读任务）。
     public var largeSeekThresholdBytes: Int64 = 8 * 1024 * 1024
 
@@ -57,10 +57,12 @@ public actor ReadAheadStreamCache {
     private var scrubMicroStart: Int64 = -1
     private var scrubMicroData = Data()
 
-    /// 并发预读与 in-flight 去重。
+    /// 单队列顺序预读与 in-flight 去重（确保前台紧急读取永远优先于后台预读）。
     private var inFlightLoads: [Int64: Task<Data, Error>] = [:]
-    private var prefetchTasks: [Int64: Task<Void, Never>] = [:]
+    private var prefetchTask: Task<Void, Never>?
+    private var prefetchGeneration: UInt64 = 0
     private var lastSequentialEnd: Int64 = -1
+    private var foregroundReadsInProgress: Int = 0
 
     public private(set) var statistics = Statistics()
 
@@ -125,6 +127,9 @@ public actor ReadAheadStreamCache {
         let range = offset..<(offset + upper)
         let indexes = chunkIndexes(for: range)
 
+        foregroundReadsInProgress += 1
+        defer { foregroundReadsInProgress = max(0, foregroundReadsInProgress - 1) }
+
         var out = Data(capacity: Int(upper))
         for idx in indexes {
             try Task.checkCancellation()
@@ -139,13 +144,10 @@ public actor ReadAheadStreamCache {
         }
 
         let endOffset = offset + upper
-        let isSequentialStep = lastSequentialEnd > 0
-            && offset >= max(0, lastSequentialEnd - 65_536)
-            && offset <= lastSequentialEnd + Int64(config.chunkSize)
-            && endOffset > lastSequentialEnd
+        let advancedForward = (lastSequentialEnd >= 0 && endOffset > lastSequentialEnd)
         lastSequentialEnd = endOffset
 
-        if isSequentialStep, let lastIdx = indexes.last {
+        if advancedForward, let lastIdx = indexes.last {
             schedulePrefetch(afterChunk: lastIdx)
         }
         return out
@@ -285,27 +287,44 @@ public actor ReadAheadStreamCache {
     private func schedulePrefetch(afterChunk lastIdx: Int64) {
         guard !scrubMode, config.readAheadChunkCount > 0, totalSize > 0 else { return }
         let maxChunkIdx = (totalSize - 1) / Int64(config.chunkSize)
-        for delta in 1...config.readAheadChunkCount {
+        let targets = (1...config.readAheadChunkCount).compactMap { delta -> Int64? in
             let nextIdx = lastIdx + Int64(delta)
-            guard nextIdx <= maxChunkIdx else { break }
-            if chunks[nextIdx] != nil || prefetchTasks[nextIdx] != nil || inFlightLoads[nextIdx] != nil {
-                continue
+            guard nextIdx <= maxChunkIdx else { return nil }
+            guard chunks[nextIdx] == nil, inFlightLoads[nextIdx] == nil else { return nil }
+            return nextIdx
+        }
+        guard !targets.isEmpty else { return }
+
+        prefetchTask?.cancel()
+        prefetchGeneration &+= 1
+        let gen = prefetchGeneration
+        prefetchTask = Task<Void, Never>(priority: .utility) { [weak self] in
+            guard let self else { return }
+            for nextIdx in targets {
+                if Task.isCancelled { return }
+                await self.prefetchSingleChunkIfIdle(nextIdx, generation: gen)
             }
-            let task = Task<Void, Never>(priority: .utility) { [weak self] in
-                guard let self else { return }
-                await self.prefetchSingleChunk(nextIdx)
-                await self.clearPrefetchTask(for: nextIdx)
-            }
-            prefetchTasks[nextIdx] = task
+            await self.clearPrefetchTaskIfCurrent(generation: gen)
         }
     }
 
-    private func clearPrefetchTask(for index: Int64) {
-        prefetchTasks.removeValue(forKey: index)
+    private func clearPrefetchTaskIfCurrent(generation: UInt64) {
+        if prefetchGeneration == generation {
+            prefetchTask = nil
+        }
     }
 
-    private func prefetchSingleChunk(_ index: Int64) async {
-        guard !scrubMode, chunks[index] == nil else { return }
+    private func prefetchSingleChunkIfIdle(_ index: Int64, generation: UInt64) async {
+        for _ in 0..<8 {
+            if Task.isCancelled || scrubMode || prefetchGeneration != generation { return }
+            if foregroundReadsInProgress <= 0 { break }
+            try? await Task.sleep(nanoseconds: 25_000_000)
+        }
+        guard !Task.isCancelled,
+              !scrubMode,
+              prefetchGeneration == generation,
+              chunks[index] == nil,
+              inFlightLoads[index] == nil else { return }
         do {
             _ = try await obtainMainChunk(index)
             statistics.prefetches += 1
@@ -315,10 +334,9 @@ public actor ReadAheadStreamCache {
     }
 
     private func cancelBackgroundPrefetch() {
-        for (_, task) in prefetchTasks {
-            task.cancel()
-        }
-        prefetchTasks.removeAll()
+        prefetchGeneration &+= 1
+        prefetchTask?.cancel()
+        prefetchTask = nil
     }
 
     private func chunkIndexes(for range: Range<Int64>) -> [Int64] {

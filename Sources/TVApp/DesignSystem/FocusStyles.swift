@@ -240,7 +240,7 @@ public struct TVPlayerOptionButtonStyle: ButtonStyle {
     public init(
         isSelected: Bool = false,
         accentTint: Color = TVTokens.Color.accent,
-        cornerRadius: CGFloat = 14
+        cornerRadius: CGFloat = 999
     ) {
         self.isSelected = isSelected
         self.accentTint = accentTint
@@ -271,14 +271,14 @@ public struct TVPlayerOptionButtonStyle: ButtonStyle {
                     shape.fill(
                         isFocused
                             ? Color.white
-                            : (isSelected ? accentTint.opacity(0.44) : Color.white.opacity(0.11))
+                            : (isSelected ? accentTint.opacity(0.46) : Color.white.opacity(0.14))
                     )
                 )
                 .overlay(
                     shape.strokeBorder(
                         isFocused
                             ? accentTint
-                            : (isSelected ? accentTint.opacity(0.90) : Color.white.opacity(0.18)),
+                            : (isSelected ? accentTint.opacity(0.92) : Color.white.opacity(0.24)),
                         lineWidth: isFocused ? 3.5 : (isSelected ? 1.8 : 1.0)
                     )
                 )

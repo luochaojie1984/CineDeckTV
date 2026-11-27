@@ -81,4 +81,14 @@ struct SubtitleKitTests {
         let decodedMono = try JSONDecoder().decode(SubtitleStyleConfig.self, from: legacyMono)
         #expect(decodedMono.fontFamily == .system)
     }
+
+    @Test("字幕默认底距为 8px 且缺失字段兼容解码为 8px")
+    func defaultBottomInsetIs8() throws {
+        let style = SubtitleStyleConfig()
+        #expect(style.bottomInset == 8)
+
+        let legacy = Data("{\"fontSize\": 38}".utf8)
+        let decoded = try JSONDecoder().decode(SubtitleStyleConfig.self, from: legacy)
+        #expect(decoded.bottomInset == 8)
+    }
 }

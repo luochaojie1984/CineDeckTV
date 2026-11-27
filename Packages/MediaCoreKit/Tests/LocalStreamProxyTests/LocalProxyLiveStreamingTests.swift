@@ -31,13 +31,13 @@ struct LocalProxyLiveStreamingTests {
         let cache = ReadAheadStreamCache(source: PatternChunkSource(totalBytes: totalSize))
         let proxy = LocalHTTPStreamProxy(cache: cache)
 
-        try await proxy.start(preferredPort: 0)
-        let boundPort = await proxy.port
+        try proxy.start(preferredPort: 0)
+        let boundPort = proxy.port
         #expect(boundPort != nil)
         #expect((boundPort ?? 0) > 0)
 
-        let route = await proxy.register(fileExtension: "mkv")
-        let url = await proxy.localURL(for: route)!
+        let route = proxy.register(fileExtension: "mkv")
+        let url = proxy.localURL(for: route)!
 
         // 1. HEAD 请求检查 Content-Length 与视频 MIME
         var headReq = URLRequest(url: url)
@@ -68,7 +68,7 @@ struct LocalProxyLiveStreamingTests {
         let (_, badResp) = try await URLSession.shared.data(for: badRangeReq)
         #expect((badResp as? HTTPURLResponse)?.statusCode == 416)
 
-        await proxy.stop()
+        proxy.stop()
     }
 
     @Test("进入与退出快进模式后主缓存与尾部钉住块字节不发生偏移错乱")
@@ -106,27 +106,27 @@ struct LocalProxyLiveStreamingTests {
         let cache = ReadAheadStreamCache(source: PatternChunkSource(totalBytes: totalSize))
         let proxy = LocalHTTPStreamProxy(cache: cache)
 
-        try await proxy.start(preferredPort: 0)
-        let firstPort = await proxy.port
+        try proxy.start(preferredPort: 0)
+        let firstPort = proxy.port
         #expect((firstPort ?? 0) > 0)
 
-        let route = await proxy.register(fileExtension: "mkv")
-        let url1 = await proxy.localURL(for: route)!
+        let route = proxy.register(fileExtension: "mkv")
+        let url1 = proxy.localURL(for: route)!
         var headReq = URLRequest(url: url1)
         headReq.httpMethod = "HEAD"
         let (_, resp1) = try await URLSession.shared.data(for: headReq)
         #expect((resp1 as? HTTPURLResponse)?.statusCode == 200)
 
         // Live listener stays on same port when forceRestart is false
-        try await proxy.ensureRunning(forceRestart: false)
-        let keptPort = await proxy.port
+        try proxy.ensureRunning(forceRestart: false)
+        let keptPort = proxy.port
         #expect(keptPort == firstPort)
 
         // Force restart rebinds while keeping registered route
-        try await proxy.ensureRunning(forceRestart: true)
-        let restartedPort = await proxy.port
+        try proxy.ensureRunning(forceRestart: true)
+        let restartedPort = proxy.port
         #expect((restartedPort ?? 0) > 0)
-        let url2 = await proxy.localURL(for: route)!
+        let url2 = proxy.localURL(for: route)!
         var rangeReq = URLRequest(url: url2)
         rangeReq.setValue("bytes=0-1023", forHTTPHeaderField: "Range")
         let (rangeData, resp2) = try await URLSession.shared.data(for: rangeReq)
@@ -134,20 +134,20 @@ struct LocalProxyLiveStreamingTests {
         #expect(rangeData.count == 1024)
 
         // Full stop -> ensureRunning() recovers and serves new route cleanly
-        await proxy.stop()
-        let stoppedPort = await proxy.port
+        proxy.stop()
+        let stoppedPort = proxy.port
         #expect(stoppedPort == nil)
 
-        try await proxy.ensureRunning()
-        let recoveredPort = await proxy.port
+        try proxy.ensureRunning()
+        let recoveredPort = proxy.port
         #expect((recoveredPort ?? 0) > 0)
-        let route2 = await proxy.register(fileExtension: "mp4")
-        let url3 = await proxy.localURL(for: route2)!
+        let route2 = proxy.register(fileExtension: "mp4")
+        let url3 = proxy.localURL(for: route2)!
         let (fullData, resp3) = try await URLSession.shared.data(for: URLRequest(url: url3))
         #expect((resp3 as? HTTPURLResponse)?.statusCode == 200)
         #expect(fullData.count == Int(totalSize))
 
-        await proxy.stop()
+        proxy.stop()
     }
 
     @Test("Route.urlPath 保留扩展名且正确返回 MIME (mp4)")
@@ -155,10 +155,10 @@ struct LocalProxyLiveStreamingTests {
         let totalSize: Int64 = 128 * 1024
         let cache = ReadAheadStreamCache(source: PatternChunkSource(totalBytes: totalSize))
         let proxy = LocalHTTPStreamProxy(cache: cache)
-        try await proxy.start(preferredPort: 0)
-        let route = await proxy.register(fileExtension: "mp4")
+        try proxy.start(preferredPort: 0)
+        let route = proxy.register(fileExtension: "mp4")
         #expect(route.urlPath.hasSuffix(".mp4"))
-        let url = await proxy.localURL(for: route)!
+        let url = proxy.localURL(for: route)!
         #expect(url.pathExtension == "mp4")
         var req = URLRequest(url: url)
         req.setValue("bytes=0-1023", forHTTPHeaderField: "Range")
@@ -167,6 +167,6 @@ struct LocalProxyLiveStreamingTests {
         #expect(http?.statusCode == 206)
         #expect(http?.value(forHTTPHeaderField: "Content-Type") == "video/mp4")
         #expect(data.count == 1024)
-        await proxy.stop()
+        proxy.stop()
     }
 }

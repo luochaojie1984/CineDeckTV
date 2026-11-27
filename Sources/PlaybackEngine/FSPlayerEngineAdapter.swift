@@ -161,7 +161,7 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         var pref = fs_subtitle_default_preference()
         pref.ForceOverride = 1
         pref.Scale = Float(min(2.5, max(0.5, style.fontSize / 34.0)))
-        pref.BottomMargin = Float(min(0.45, max(0.01, style.bottomInset / 1080.0)))
+        pref.BottomMargin = Float(min(0.45, max(0.0, style.bottomInset / 1080.0)))
         pref.Outline = Float(min(6.0, max(0, style.outlineWidth)))
         pref.PrimaryColour = assColor(fromHex: style.foregroundHex, defaultColor: 0xFFFFFF00)
         pref.OutlineColour = assColor(fromHex: style.outlineHex, defaultColor: 0x00000000)

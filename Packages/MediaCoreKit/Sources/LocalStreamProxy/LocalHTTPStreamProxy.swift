@@ -7,11 +7,11 @@ import Glibc
 #endif
 
 /// 本地 127.0.0.1 高吞吐流式 HTTP/1.1 Range 代理：把 VFS 缓存包装成播放器可直接吃的短 ASCII URL。
-/// 关键优化（对齐 AuraTV 丝滑播放体验）：
-/// 1. start() 同步完成 socket/bind/listen 并填充 port，消除异步竞态。
-/// 2. 接受连接后在独立并发任务中读头与流式写回，彻底消除 actor 队头阻塞（支持 KSPlayer / FSPlayer / AVPlayer 并发 Range 探测与高码率 4K 推流）。
-/// 3. 常规播放 512 KB 切片 + 512 KB SO_SNDBUF，快进模式 64 KB 切片 + 64 KB SO_SNDBUF + 取消陈旧快进请求。
-public actor LocalHTTPStreamProxy {
+/// 关键优化（对齐 AuraTV 零阻塞同步锁设计）：
+/// 1. 使用轻量 NSLock 替代 Swift actor，彻底消除每个 Range 请求 / 任务注销的 actor 跳数与排队开销。
+/// 2. start() / ensureRunning() 同步完成 socket/bind/listen 并填充 port。
+/// 3. 常规播放 256 KB 低延迟切片 + 512 KB SO_SNDBUF + TCP_NODELAY，快进模式 64 KB 切片 + 取消陈旧快进请求。
+public final class LocalHTTPStreamProxy: @unchecked Sendable {
     public struct Route: Sendable, Hashable {
         public let token: String
         public let path: String
@@ -33,15 +33,26 @@ public actor LocalHTTPStreamProxy {
     }
 
     private let cache: ReadAheadStreamCache
+    private let lock = NSLock()
     private var server: POSIXLoopbackServer?
     private var routes: [String: Route] = [:]
     private var activeTasks: [UUID: Task<Void, Never>] = [:]
     private var activeScrubTasks: [UUID: Task<Void, Never>] = [:]
     private var scrubMode = false
-    public private(set) var port: UInt16?
+    private var _port: UInt16?
+
+    public var port: UInt16? {
+        lock.lock()
+        defer { lock.unlock() }
+        return _port
+    }
 
     public init(cache: ReadAheadStreamCache) {
         self.cache = cache
+    }
+
+    deinit {
+        stop()
     }
 
     /// 注册文件路由，返回短 ASCII 播放地址（保留扩展名，与真实中文/日文长文件名彻底隔离）。
@@ -49,7 +60,9 @@ public actor LocalHTTPStreamProxy {
         let token = String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(12)).lowercased()
         let ext = fileExtension.isEmpty ? "bin" : fileExtension.lowercased()
         let route = Route(token: token, path: "\(token).\(ext)")
+        lock.lock()
         routes[route.urlPath] = route
+        lock.unlock()
         return route
     }
 
@@ -59,52 +72,78 @@ public actor LocalHTTPStreamProxy {
 
     /// 确保本地回环监听处于可用状态；若 tvOS 后台挂起回收了 socket，自动重建监听端口并保留已注册路由。
     public func ensureRunning(forceRestart: Bool = false, preferredPort: UInt16 = 0) throws {
-        if !forceRestart, let server, server.isAlive() {
-            self.port = server.port
+        lock.lock()
+        let currentServer = server
+        let alive = !forceRestart && (currentServer?.isAlive() == true)
+        if alive, let currentServer {
+            _port = currentServer.port
+            lock.unlock()
             return
         }
-        server?.stop()
         server = nil
-        port = nil
+        _port = nil
+        lock.unlock()
+
+        currentServer?.stop()
 
         let srv = try POSIXLoopbackServer(preferredPort: preferredPort) { [weak self] fd in
             guard let self else {
                 POSIXLoopbackServer.closeFD(fd)
                 return
             }
-            Task.detached(priority: .userInitiated) {
+            Task.detached(priority: .userInitiated) { [weak self] in
+                guard let self else {
+                    POSIXLoopbackServer.closeFD(fd)
+                    return
+                }
                 await self.serveDetachedClient(fd)
             }
         }
-        self.server = srv
-        self.port = srv.port
+
+        lock.lock()
+        server = srv
+        _port = srv.port
+        lock.unlock()
     }
 
     public func stop() {
-        for task in activeTasks.values { task.cancel() }
+        lock.lock()
+        let tasks = Array(activeTasks.values)
+        let scrubTasks = Array(activeScrubTasks.values)
         activeTasks.removeAll()
-        for task in activeScrubTasks.values { task.cancel() }
         activeScrubTasks.removeAll()
-        server?.stop()
+        let oldServer = server
         server = nil
-        port = nil
+        _port = nil
         routes.removeAll()
+        scrubMode = false
+        lock.unlock()
+
+        for task in tasks { task.cancel() }
+        for task in scrubTasks { task.cancel() }
+        oldServer?.stop()
     }
 
     public func setScrubMode(_ enabled: Bool) {
+        var tasksToCancel: [Task<Void, Never>] = []
+        lock.lock()
         scrubMode = enabled
         if !enabled {
+            tasksToCancel = Array(activeScrubTasks.values)
             activeScrubTasks.removeAll()
         }
+        lock.unlock()
+
+        for task in tasksToCancel { task.cancel() }
     }
 
     public func localURL(for route: Route) -> URL? {
-        guard let port else { return nil }
-        return URL(string: "http://127.0.0.1:\(port)\(route.urlPath)")
+        guard let currentPort = port else { return nil }
+        return URL(string: "http://127.0.0.1:\(currentPort)\(route.urlPath)")
     }
 
     /// 解析 HTTP Range 请求头，兼容 closed (`bytes=100-199`), open (`bytes=900-`), suffix (`bytes=-100`)。
-    public nonisolated static func parseRange(_ value: String, total: Int64) -> (Int64, Int64)? {
+    public static func parseRange(_ value: String, total: Int64) -> (Int64, Int64)? {
         guard total > 0, value.lowercased().hasPrefix("bytes=") else { return nil }
         let spec = value.dropFirst(6).split(separator: ",", maxSplits: 1)[0].trimmingCharacters(in: .whitespaces)
         let pair = spec.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
@@ -119,28 +158,41 @@ public actor LocalHTTPStreamProxy {
     }
 
     private func lookupRouteAndPrepare(target: String, method: String) -> (route: Route, isScrub: Bool, cache: ReadAheadStreamCache)? {
-        guard let route = routes[target] else { return nil }
-        if scrubMode && method == "GET" {
-            for existing in activeScrubTasks.values { existing.cancel() }
+        var staleScrubTasks: [Task<Void, Never>] = []
+        lock.lock()
+        guard let route = routes[target] else {
+            lock.unlock()
+            return nil
+        }
+        let isScrub = scrubMode
+        if isScrub && method == "GET" {
+            staleScrubTasks = Array(activeScrubTasks.values)
             activeScrubTasks.removeAll()
         }
-        return (route, scrubMode, cache)
+        let cacheRef = cache
+        lock.unlock()
+
+        for existing in staleScrubTasks { existing.cancel() }
+        return (route, isScrub, cacheRef)
     }
 
     private func registerTask(_ task: Task<Void, Never>, id: UUID, isScrubGet: Bool) {
+        lock.lock()
         activeTasks[id] = task
         if isScrubGet {
             activeScrubTasks[id] = task
         }
+        lock.unlock()
     }
 
     private func unregisterTask(id: UUID) {
+        lock.lock()
         activeTasks.removeValue(forKey: id)
         activeScrubTasks.removeValue(forKey: id)
+        lock.unlock()
     }
 
-    /// 在 actor 外并发处理完整 HTTP 连接生命周期，避免大流传输阻塞其他并发 Range 请求。
-    private nonisolated func serveDetachedClient(_ fd: Int32) async {
+    private func serveDetachedClient(_ fd: Int32) async {
         guard let requestData = Self.readHTTPHeader(fd: fd) else {
             POSIXLoopbackServer.closeFD(fd)
             return
@@ -168,7 +220,7 @@ public actor LocalHTTPStreamProxy {
             return
         }
 
-        guard let resolved = await lookupRouteAndPrepare(target: target, method: method) else {
+        guard let resolved = lookupRouteAndPrepare(target: target, method: method) else {
             Self.sendSimpleStatusSync(fd: fd, code: 404, reason: "Not Found")
             POSIXLoopbackServer.closeFD(fd)
             return
@@ -186,9 +238,7 @@ public actor LocalHTTPStreamProxy {
         let streamTask = Task.detached(priority: .userInitiated) { [weak self] in
             defer {
                 POSIXLoopbackServer.closeFD(fd)
-                if let self {
-                    Task { await self.unregisterTask(id: taskID) }
-                }
+                self?.unregisterTask(id: taskID)
             }
             do {
                 let total = try await cacheRef.fetchContentSize()
@@ -225,7 +275,7 @@ public actor LocalHTTPStreamProxy {
                         cache: cacheRef,
                         start: start,
                         end: end,
-                        sliceSize: isScrub ? 64 * 1024 : 512 * 1024,
+                        sliceSize: isScrub ? 64 * 1024 : 256 * 1024,
                         lowWaterBuffer: isScrub
                     )
                 } else {
@@ -245,7 +295,7 @@ public actor LocalHTTPStreamProxy {
                         cache: cacheRef,
                         start: 0,
                         end: total - 1,
-                        sliceSize: isScrub ? 64 * 1024 : 512 * 1024,
+                        sliceSize: isScrub ? 64 * 1024 : 256 * 1024,
                         lowWaterBuffer: isScrub
                     )
                 }
@@ -256,10 +306,10 @@ public actor LocalHTTPStreamProxy {
             }
         }
 
-        await registerTask(streamTask, id: taskID, isScrubGet: isScrub && method == "GET")
+        registerTask(streamTask, id: taskID, isScrubGet: isScrub && method == "GET")
     }
 
-    private nonisolated static func mimeType(forPath path: String) -> String {
+    private static func mimeType(forPath path: String) -> String {
         let ext = (path as NSString).pathExtension.lowercased()
         switch ext {
         case "mp4", "m4v": return "video/mp4"
@@ -273,7 +323,7 @@ public actor LocalHTTPStreamProxy {
         }
     }
 
-    private nonisolated static func readHTTPHeader(fd: Int32) -> Data? {
+    private static func readHTTPHeader(fd: Int32) -> Data? {
         var tv = timeval(tv_sec: 5, tv_usec: 0)
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
 
@@ -297,7 +347,7 @@ public actor LocalHTTPStreamProxy {
         return nil
     }
 
-    private nonisolated static func streamRange(
+    private static func streamRange(
         fd: Int32,
         cache: ReadAheadStreamCache,
         start: Int64,
@@ -320,7 +370,7 @@ public actor LocalHTTPStreamProxy {
         }
     }
 
-    private nonisolated static func sendHeader(fd: Int32, statusLine: String, headers: [String: String]) {
+    private static func sendHeader(fd: Int32, statusLine: String, headers: [String: String]) {
         var text = statusLine + "\r\n"
         for (k, v) in headers {
             text += "\(k): \(v)\r\n"
@@ -329,12 +379,12 @@ public actor LocalHTTPStreamProxy {
         _ = sendAll(fd: fd, data: Data(text.utf8))
     }
 
-    private nonisolated static func sendSimpleStatusSync(fd: Int32, code: Int, reason: String) {
+    private static func sendSimpleStatusSync(fd: Int32, code: Int, reason: String) {
         let text = "HTTP/1.1 \(code) \(reason)\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
         _ = sendAll(fd: fd, data: Data(text.utf8))
     }
 
-    private nonisolated static func sendAll(fd: Int32, data: Data) -> Bool {
+    private static func sendAll(fd: Int32, data: Data) -> Bool {
         data.withUnsafeBytes { rawBuf -> Bool in
             guard let base = rawBuf.baseAddress else { return true }
             var sent = 0
@@ -496,9 +546,9 @@ private final class POSIXLoopbackServer: @unchecked Sendable {
             #if canImport(Darwin)
             var noSigPipe: Int32 = 1
             setsockopt(clientFD, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
-            var noDelay: Int32 = 1
-            setsockopt(clientFD, IPPROTO_TCP, TCP_NODELAY, &noDelay, socklen_t(MemoryLayout<Int32>.size))
             #endif
+            var noDelay: Int32 = 1
+            setsockopt(clientFD, Int32(IPPROTO_TCP), TCP_NODELAY, &noDelay, socklen_t(MemoryLayout<Int32>.size))
             onAccept(clientFD)
         }
     }

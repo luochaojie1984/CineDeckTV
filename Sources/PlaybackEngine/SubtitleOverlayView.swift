@@ -1,16 +1,29 @@
 import SwiftUI
 import SubtitleKit
 
-/// SwiftUI 实时文本字幕渲染层：支持 7 款真实中文字体、10 种配色、字号、底距位置、描边、底框透明度、对齐方式与时间轴偏移实时生效。
+/// SwiftUI 实时文本字幕渲染层：
+/// - 贴合 1080p 真实底边（默认距底 8px），不被 tvOS Safe Area 误顶高；
+/// - 支持设置面板开启时将 `virtualBottomFloor` 设为设置栏顶部高度，使字幕实时落在“设置栏上沿 + bottomInset”位置；
+/// - 支持 7 款真实中文字体、10 种配色、字号、位置、描边、底框透明度、对齐与时间轴偏移实时生效。
 public struct SubtitleOverlayView: View {
     public let cues: [SubtitleCue]
     public let currentTime: TimeInterval
     public let style: SubtitleStyleConfig
+    public let virtualBottomFloor: CGFloat
+    public let previewFallbackText: String?
 
-    public init(cues: [SubtitleCue], currentTime: TimeInterval, style: SubtitleStyleConfig) {
+    public init(
+        cues: [SubtitleCue],
+        currentTime: TimeInterval,
+        style: SubtitleStyleConfig,
+        virtualBottomFloor: CGFloat = 0,
+        previewFallbackText: String? = nil
+    ) {
         self.cues = cues
         self.currentTime = currentTime
         self.style = style
+        self.virtualBottomFloor = virtualBottomFloor
+        self.previewFallbackText = previewFallbackText
     }
 
     private var activeCueText: String? {
@@ -19,28 +32,44 @@ public struct SubtitleOverlayView: View {
         return cues.first(where: { $0.start <= adjusted && adjusted <= $0.end })?.text
     }
 
+    private var displayedText: String? {
+        if let active = activeCueText, !active.isEmpty {
+            return active
+        }
+        if let fallback = previewFallbackText, !fallback.isEmpty {
+            return fallback
+        }
+        return nil
+    }
+
+    private var effectiveBottomPadding: CGFloat {
+        max(0, virtualBottomFloor) + CGFloat(max(0, style.bottomInset))
+    }
+
     private var styleRenderID: String {
         "\(style.fontFamily.rawValue)-\(Int(style.fontSize))-\(style.foregroundHex)-\(Int(style.outlineWidth * 10))-\(Int(style.backgroundOpacity * 100))-\(style.alignment.rawValue)"
     }
 
     public var body: some View {
-        VStack {
-            Spacer()
-            if let text = activeCueText, !text.isEmpty {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            if let text = displayedText {
                 styledSubtitleText(text)
                     .id(styleRenderID)
                     .multilineTextAlignment(textAlignment)
-                    .padding(.horizontal, style.backgroundOpacity > 0.02 ? 28 : 10)
+                    .padding(.horizontal, style.backgroundOpacity > 0.02 ? 30 : 12)
                     .padding(.vertical, style.backgroundOpacity > 0.02 ? 12 : 4)
                     .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
                             .fill(Color.black.opacity(min(0.85, max(0, style.backgroundOpacity))))
                     )
                     .frame(maxWidth: .infinity, alignment: frameAlignment)
                     .padding(.horizontal, 96)
-                    .padding(.bottom, CGFloat(max(12, style.bottomInset)))
+                    .padding(.bottom, effectiveBottomPadding)
+                    .animation(.easeOut(duration: 0.16), value: effectiveBottomPadding)
             }
         }
+        .ignoresSafeArea()
         .allowsHitTesting(false)
     }
 

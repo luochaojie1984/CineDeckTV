@@ -70,6 +70,8 @@ public struct PlayerScreenView: View {
     @State private var lastLoadedURL: String?
 
     @State private var subtitleStyle = SubtitleStyleConfig()
+    @State private var bottomDockHeight: CGFloat = 0
+    @State private var didScheduleScrubWarmup = false
     @FocusState private var hudFocus: HUDFocusItem?
 
     public init(
@@ -99,20 +101,16 @@ public struct PlayerScreenView: View {
         return subtitleStyle.forceCustomStyle
     }
 
-    private var effectiveOverlaySubtitleStyle: SubtitleStyleConfig {
-        var copy = subtitleStyle
-        if activeDrawer != nil {
-            copy.bottomInset = max(subtitleStyle.bottomInset, 470)
-        } else if showHUD {
-            copy.bottomInset = max(subtitleStyle.bottomInset, 168)
-        }
-        return copy
+    private var subtitleVirtualBottomFloor: CGFloat {
+        guard showHUD || activeDrawer != nil || previewOpenHUD else { return 0 }
+        if bottomDockHeight > 0 { return bottomDockHeight }
+        return (activeDrawer != nil || previewOpenHUD) ? 518 : 172
     }
 
-    private var previewOverlaySubtitleStyle: SubtitleStyleConfig {
-        var copy = subtitleStyle
-        copy.bottomInset = 475
-        return copy
+    private var shouldShowSubtitleOverlayLayer: Bool {
+        if previewOpenHUD { return true }
+        if activeDrawer == .subtitles { return true }
+        return shouldRenderCustomSubtitleOverlay
     }
 
     public var body: some View {
@@ -126,15 +124,22 @@ public struct PlayerScreenView: View {
                     .ignoresSafeArea()
             }
 
-            if !previewOpenHUD && shouldRenderCustomSubtitleOverlay {
-                SubtitleOverlayView(cues: overlayCues, currentTime: coordinator.currentTime, style: effectiveOverlaySubtitleStyle)
-            }
-
             if previewOpenHUD {
                 SubtitleOverlayView(
-                    cues: [SubtitleCue(start: 0, end: 99999, text: "不要温顺地走进那个良夜 —— 楷体 / 宋体 / 仿宋 / 圆体 / 电影艺术黑实时生效")],
+                    cues: [SubtitleCue(start: 0, end: 99999, text: "不要温顺地走进那个良夜 —— 距底 \(Int(subtitleStyle.bottomInset))px（设置栏上沿即画面底边）")],
                     currentTime: 100,
-                    style: previewOverlaySubtitleStyle
+                    style: subtitleStyle,
+                    virtualBottomFloor: subtitleVirtualBottomFloor
+                )
+            } else if shouldShowSubtitleOverlayLayer {
+                SubtitleOverlayView(
+                    cues: overlayCues,
+                    currentTime: coordinator.currentTime,
+                    style: subtitleStyle,
+                    virtualBottomFloor: subtitleVirtualBottomFloor,
+                    previewFallbackText: activeDrawer == .subtitles
+                        ? "字幕实时预览 · 距底部 \(Int(subtitleStyle.bottomInset))px（设置栏上沿即底边）"
+                        : nil
                 )
             }
 
@@ -226,77 +231,84 @@ public struct PlayerScreenView: View {
                     .allowsHitTesting(false)
             }
 
-            // 播放控制栏 + 贴底设置面板：同一底部栈布局，严格处于视频画框内，绝不越界
+            // 播放控制栏 + 贴底设置面板：贴紧 1080p 真实底边且实时测量占用高度作为字幕虚拟底边
             if showHUD || previewOpenHUD {
-                VStack(spacing: 10) {
+                VStack(spacing: 0) {
                     Spacer(minLength: 0)
+                    VStack(spacing: 12) {
+                        if activeDrawer != nil {
+                            PlayerBottomSettingsPanel(
+                                kind: $activeDrawer,
+                                coordinator: coordinator,
+                                externalSubtitles: previewOpenHUD ? Self.previewExternalSubs : externalSubtitles,
+                                activeExternalPath: previewOpenHUD ? Self.previewExternalSubs.first?.path : activeExternalSubPath,
+                                activeEmbeddedSubID: activeEmbeddedSubID,
+                                activeAudioTrackID: activeAudioTrackID,
+                                style: $subtitleStyle,
+                                showTechStats: $showTechStats,
+                                onSelectExternalSubtitle: { candidate in
+                                    Task { await activateExternalSubtitle(candidate) }
+                                },
+                                onSelectEmbeddedSubtitle: { id in
+                                    activeExternalSubPath = nil
+                                    activeExternalLocalURL = nil
+                                    overlayCues = []
+                                    activeEmbeddedSubID = id
+                                    coordinator.selectSubtitleTrack(id)
+                                },
+                                onDisableSubtitle: {
+                                    activeExternalSubPath = nil
+                                    activeExternalLocalURL = nil
+                                    activeEmbeddedSubID = nil
+                                    overlayCues = []
+                                    coordinator.disableEmbeddedSubtitle()
+                                },
+                                onSelectAudioTrack: { id in
+                                    activeAudioTrackID = id
+                                    coordinator.selectAudioTrack(id)
+                                },
+                                onSwitchEngine: { targetEngine in
+                                    switchEngineLive(to: targetEngine)
+                                },
+                                onToggleHardwareDecode: { hw in
+                                    toggleDecodeLive(hardware: hw)
+                                },
+                                onChangeRate: { rate in
+                                    coordinator.setPlaybackRate(rate)
+                                    var copy = env.settings
+                                    copy.playbackRate = rate
+                                    env.update(settings: copy)
+                                },
+                                onChangeScaling: { scaling in
+                                    coordinator.setScalingMode(scaling)
+                                    var copy = env.settings
+                                    copy.scalingPreference = mapScalingBack(scaling)
+                                    env.update(settings: copy)
+                                },
+                                onInteraction: {
+                                    hudAutoHideTask?.cancel()
+                                },
+                                onClose: {
+                                    withAnimation(TVTokens.Motion.focus) { activeDrawer = nil }
+                                    claimHUDFocus(.decodeAndEngine)
+                                    scheduleHUDAutoHide()
+                                }
+                            )
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
 
-                    if activeDrawer != nil {
-                        PlayerBottomSettingsPanel(
-                            kind: $activeDrawer,
-                            coordinator: coordinator,
-                            externalSubtitles: previewOpenHUD ? Self.previewExternalSubs : externalSubtitles,
-                            activeExternalPath: previewOpenHUD ? Self.previewExternalSubs.first?.path : activeExternalSubPath,
-                            activeEmbeddedSubID: activeEmbeddedSubID,
-                            activeAudioTrackID: activeAudioTrackID,
-                            style: $subtitleStyle,
-                            showTechStats: $showTechStats,
-                            onSelectExternalSubtitle: { candidate in
-                                Task { await activateExternalSubtitle(candidate) }
-                            },
-                            onSelectEmbeddedSubtitle: { id in
-                                activeExternalSubPath = nil
-                                activeExternalLocalURL = nil
-                                overlayCues = []
-                                activeEmbeddedSubID = id
-                                coordinator.selectSubtitleTrack(id)
-                            },
-                            onDisableSubtitle: {
-                                activeExternalSubPath = nil
-                                activeExternalLocalURL = nil
-                                activeEmbeddedSubID = nil
-                                overlayCues = []
-                                coordinator.disableEmbeddedSubtitle()
-                            },
-                            onSelectAudioTrack: { id in
-                                activeAudioTrackID = id
-                                coordinator.selectAudioTrack(id)
-                            },
-                            onSwitchEngine: { targetEngine in
-                                switchEngineLive(to: targetEngine)
-                            },
-                            onToggleHardwareDecode: { hw in
-                                toggleDecodeLive(hardware: hw)
-                            },
-                            onChangeRate: { rate in
-                                coordinator.setPlaybackRate(rate)
-                                var copy = env.settings
-                                copy.playbackRate = rate
-                                env.update(settings: copy)
-                            },
-                            onChangeScaling: { scaling in
-                                coordinator.setScalingMode(scaling)
-                                var copy = env.settings
-                                copy.scalingPreference = mapScalingBack(scaling)
-                                env.update(settings: copy)
-                            },
-                            onInteraction: {
-                                hudAutoHideTask?.cancel()
-                            },
-                            onClose: {
-                                withAnimation(TVTokens.Motion.focus) { activeDrawer = nil }
-                                claimHUDFocus(.decodeAndEngine)
-                                scheduleHUDAutoHide()
-                            }
-                        )
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        floatingTransportHUD
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
-
-                    floatingTransportHUD
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 18)
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.preference(key: BottomDockHeightPreferenceKey.self, value: geo.size.height)
+                        }
+                    )
                 }
-                .padding(.horizontal, 40)
-                .padding(.bottom, 14)
+                .ignoresSafeArea(.container, edges: .bottom)
             }
 
             if let countdown = nextEpisodeCountdown, let next = nextEpisodeEntry {
@@ -308,6 +320,11 @@ public struct PlayerScreenView: View {
             }
         }
         .background(Color.black.ignoresSafeArea())
+        .onPreferenceChange(BottomDockHeightPreferenceKey.self) { measuredHeight in
+            if abs(bottomDockHeight - measuredHeight) > 0.5 {
+                bottomDockHeight = measuredHeight
+            }
+        }
         .onChange(of: subtitleStyle) { oldStyle, newStyle in
             coordinator.applySubtitleStyle(newStyle)
             if coordinator.activeEngine == .fsplayer && oldStyle.forceCustomStyle != newStyle.forceCustomStyle {
@@ -336,11 +353,25 @@ public struct PlayerScreenView: View {
         .onExitCommand {
             handlePlayerMenuBack()
         }
+        .onPlayPauseCommand {
+            guard !previewOpenHUD, !isRemoteCaptureActive else { return }
+            if scrub.isScrubbing {
+                commitActiveScrub()
+            } else {
+                togglePlayPause()
+                if !showHUD {
+                    bumpHUD()
+                } else if activeDrawer == nil {
+                    scheduleHUDAutoHide()
+                }
+            }
+        }
         .task {
             subtitleStyle = env.settings.subtitleStyle
             if previewOpenHUD {
                 subtitleStyle.fontFamily = .kaiti
                 subtitleStyle.foregroundHex = "#FFD859"
+                subtitleStyle.bottomInset = 8
                 showHUD = true
                 showTechStats = true
                 activeDrawer = .subtitles
@@ -411,8 +442,8 @@ public struct PlayerScreenView: View {
             let engineToClose = scrubEngine
             Task {
                 await engineToClose.close()
-                await proxy?.stop()
             }
+            proxy?.stop()
         }
     }
 
@@ -475,7 +506,7 @@ public struct PlayerScreenView: View {
 
         if let oldProxy = proxy {
             proxy = nil
-            await oldProxy.stop()
+            oldProxy.stop()
         }
         streamCache = nil
         await env.resetProvider(for: source.id)
@@ -498,6 +529,7 @@ public struct PlayerScreenView: View {
     private func startPlayback(for item: VFSEntry, startAt: Double) async {
         currentEntry = item
         errorMessage = nil
+        didScheduleScrubWarmup = false
         appendSmokeStatus("start-playback")
         let effectiveStartAt = env.settings.enableResumePlayback ? startAt : 0
 
@@ -509,7 +541,7 @@ public struct PlayerScreenView: View {
 
         if let oldProxy = proxy {
             proxy = nil
-            await oldProxy.stop()
+            oldProxy.stop()
         }
 
         do {
@@ -540,9 +572,9 @@ public struct PlayerScreenView: View {
                     try await cache.prepare(totalSize: totalSize, moovOffset: moovOffset, moovLength: moovLength)
 
                     let proxy = LocalHTTPStreamProxy(cache: cache)
-                    try await proxy.ensureRunning(forceRestart: attempt > 1, preferredPort: 0)
-                    let route = await proxy.register(fileExtension: ext)
-                    guard let url = await proxy.localURL(for: route) else {
+                    try proxy.ensureRunning(forceRestart: attempt > 1, preferredPort: 0)
+                    let route = proxy.register(fileExtension: ext)
+                    guard let url = proxy.localURL(for: route) else {
                         throw PlayerEngineError.loadFailed("本地代理端口未就绪")
                     }
                     self.proxy = proxy
@@ -555,6 +587,7 @@ public struct PlayerScreenView: View {
                     }
                     coordinator.onFirstFrameForSmokeTest = {
                         appendSmokeStatus("first-frame")
+                        scheduleDelayedScrubWarmup(provider: provider, streamURL: url, itemPath: item.path)
                     }
                     coordinator.onPlaybackFinished = {
                         Task { @MainActor in await handlePlaybackEnded(currentItem: item) }
@@ -572,7 +605,7 @@ public struct PlayerScreenView: View {
                 } catch {
                     if let failedProxy = self.proxy {
                         self.proxy = nil
-                        await failedProxy.stop()
+                        failedProxy.stop()
                     }
                     if attempt == 2 {
                         throw error
@@ -583,12 +616,10 @@ public struct PlayerScreenView: View {
 
             guard let provider = openedProvider, let streamURL = openedURL, !didDismiss else { return }
 
-            // 后台异步预热独立硬件关键帧快进引擎（直连 SMB2 同步句柄，绕开本地 HTTP 环回）
-            let localScrub = scrubEngine
-            let itemPath = item.path
-            scrubPrepareTask = Task.detached(priority: .utility) {
-                let directReader = try? await provider.openSynchronousScrubReader(path: itemPath)
-                await localScrub.prepare(url: streamURL, directReader: directReader)
+            // 兜底定时器：若个别内核未触发首帧回调（如 AVPlayer），6 秒后再低优先级预热快进引擎，避开起播 SMB 竞争
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 6_000_000_000)
+                scheduleDelayedScrubWarmup(provider: provider, streamURL: streamURL, itemPath: item.path)
             }
 
             if effectiveStartAt > 10 {
@@ -607,6 +638,21 @@ public struct PlayerScreenView: View {
                 appendSmokeStatus("error:\(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
+        }
+    }
+
+    /// 首帧出画后再延迟 2.5s 预热独立硬件关键帧快进引擎，避免起播 T=0 时抢占 SMB 连接。
+    private func scheduleDelayedScrubWarmup(provider: any VFSProvider, streamURL: URL, itemPath: String) {
+        guard !didScheduleScrubWarmup, !didDismiss else { return }
+        didScheduleScrubWarmup = true
+        let localScrub = scrubEngine
+        scrubPrepareTask?.cancel()
+        scrubPrepareTask = Task.detached(priority: .utility) {
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            if Task.isCancelled { return }
+            let directReader = try? await provider.openSynchronousScrubReader(path: itemPath)
+            if Task.isCancelled { return }
+            await localScrub.prepare(url: streamURL, directReader: directReader)
         }
     }
 
@@ -694,8 +740,8 @@ public struct PlayerScreenView: View {
         scrubEngine.resetTracking()
         coordinator.pause()
         coordinator.setMuted(true)
+        proxy?.setScrubMode(true)
         Task {
-            await proxy?.setScrubMode(true)
             await streamCache?.setScrubMode(true)
         }
     }
@@ -721,7 +767,7 @@ public struct PlayerScreenView: View {
 
     private func exitScrubStateAndSeek(to finalTarget: TimeInterval, accurate: Bool) async {
         await streamCache?.setScrubMode(false)
-        await proxy?.setScrubMode(false)
+        proxy?.setScrubMode(false)
         await coordinator.seekAndWait(to: finalTarget, accurate: accurate, resumePlaying: wasPlayingBeforeScrub)
         coordinator.setMuted(false)
         scrubFramePresenter.clear()
@@ -931,8 +977,8 @@ public struct PlayerScreenView: View {
         let engineToClose = scrubEngine
         Task {
             await engineToClose.close()
-            await proxy?.stop()
         }
+        proxy?.stop()
         dismiss()
     }
 
@@ -1021,8 +1067,9 @@ public struct PlayerScreenView: View {
             .padding(.horizontal, 26)
             .padding(.vertical, 13)
             .tvGlassSurface(cornerRadius: TVTokens.Radius.capsule, clear: false)
-            .padding(.bottom, 14)
+            .padding(.bottom, 18)
         }
+        .ignoresSafeArea(.container, edges: .bottom)
     }
 
     private var resumePill: some View {
@@ -1041,12 +1088,12 @@ public struct PlayerScreenView: View {
         }
     }
 
-    /// 贴底紧凑播放控制栏与进度条：严格处于视频画框内，支持遥控器左右键顺畅切换所有按钮。
+    /// 贴底圆润胶囊播放控制栏与进度条：大字号 10-foot 按钮与胶囊圆角，支持遥控器左右键顺畅切换所有按钮。
     private var floatingTransportHUD: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 14) {
                 Text(TVTitleFormatter.cleanDisplayTitle(activeEntry.name))
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.system(size: 26, weight: .bold))
                     .lineLimit(1)
 
                 VideoBadgeRow(activeEntry.badges, maxCount: 4)
@@ -1054,7 +1101,7 @@ public struct PlayerScreenView: View {
                 Spacer(minLength: 12)
 
                 Text(previewOpenHUD ? "01:08:40 / 02:49:00" : "\(formatTime(coordinator.currentTime)) / \(formatTime(coordinator.duration))")
-                    .font(.system(size: 21, weight: .bold, design: .monospaced))
+                    .font(.system(size: 23, weight: .bold, design: .monospaced))
                     .foregroundStyle(TVTokens.Color.secondaryText)
             }
 
@@ -1062,21 +1109,21 @@ public struct PlayerScreenView: View {
                 progress: previewOpenHUD ? (4120.0 / 10140.0) : (coordinator.currentTime / max(1, coordinator.duration)),
                 tint: Color(cdHex: env.settings.scrubBarColorHex),
                 secondaryTint: TVTokens.Color.violet,
-                height: 7
+                height: 9
             )
 
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Button {
                     togglePlayPause()
                     scheduleHUDAutoHide()
                 } label: {
                     Label(coordinator.isPlaying && !previewOpenHUD ? "暂停" : "播放", systemImage: coordinator.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 20, weight: .bold))
                         .lineLimit(1)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 11)
                 }
-                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: true, accentTint: TVTokens.Color.accent, cornerRadius: 12))
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: true, accentTint: TVTokens.Color.accent, cornerRadius: 999))
                 .focused($hudFocus, equals: .playPause)
 
                 Button {
@@ -1093,12 +1140,12 @@ public struct PlayerScreenView: View {
                     }
                 } label: {
                     Label("解码·内核", systemImage: "cpu.fill")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 20, weight: .bold))
                         .lineLimit(1)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 11)
                 }
-                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: activeDrawer == .decodeAndEngine, accentTint: TVTokens.Color.accent, cornerRadius: 12))
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: activeDrawer == .decodeAndEngine, accentTint: TVTokens.Color.accent, cornerRadius: 999))
                 .focused($hudFocus, equals: .decodeAndEngine)
 
                 Button {
@@ -1115,12 +1162,12 @@ public struct PlayerScreenView: View {
                     }
                 } label: {
                     Label("字幕设置", systemImage: "captions.bubble.fill")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 20, weight: .bold))
                         .lineLimit(1)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 11)
                 }
-                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: activeDrawer == .subtitles, accentTint: TVTokens.Color.amber, cornerRadius: 12))
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: activeDrawer == .subtitles, accentTint: TVTokens.Color.amber, cornerRadius: 999))
                 .focused($hudFocus, equals: .subtitles)
 
                 Button {
@@ -1137,12 +1184,12 @@ public struct PlayerScreenView: View {
                     }
                 } label: {
                     Label("音轨", systemImage: "waveform")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 20, weight: .bold))
                         .lineLimit(1)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 11)
                 }
-                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: activeDrawer == .audio, accentTint: TVTokens.Color.violet, cornerRadius: 12))
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: activeDrawer == .audio, accentTint: TVTokens.Color.violet, cornerRadius: 999))
                 .focused($hudFocus, equals: .audio)
 
                 Button {
@@ -1150,41 +1197,41 @@ public struct PlayerScreenView: View {
                     scheduleHUDAutoHide()
                 } label: {
                     Label("统计", systemImage: "chart.bar.xaxis")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 20, weight: .bold))
                         .lineLimit(1)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 11)
                 }
-                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: showTechStats, accentTint: TVTokens.Color.emerald, cornerRadius: 12))
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: showTechStats, accentTint: TVTokens.Color.emerald, cornerRadius: 999))
                 .focused($hudFocus, equals: .stats)
 
                 Spacer(minLength: 10)
 
                 Text("\(previewOpenHUD ? "KSPlayer 5.6 · HW" : "\(coordinator.activeEngine.displayName) · \(coordinator.isHardwareDecode ? "HW" : "SW")")")
-                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .font(.system(size: 17, weight: .bold, design: .monospaced))
                     .foregroundStyle(TVTokens.Color.secondaryText)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
                     .background(Color.white.opacity(0.08), in: Capsule())
 
                 Button {
                     dismissPlayer()
                 } label: {
                     Label("退出", systemImage: "xmark")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 20, weight: .bold))
                         .lineLimit(1)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 9)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 11)
                 }
-                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: TVTokens.Color.coral, cornerRadius: 12))
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: TVTokens.Color.coral, cornerRadius: 999))
                 .focused($hudFocus, equals: .exit)
             }
             .focusSection()
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 28)
+        .padding(.vertical, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .tvGlassSurface(cornerRadius: 22, clear: false)
+        .tvGlassSurface(cornerRadius: 30, clear: false)
         .defaultFocus($hudFocus, .decodeAndEngine)
         .onAppear {
             if !previewOpenHUD && activeDrawer == nil {
@@ -1211,12 +1258,12 @@ public struct PlayerScreenView: View {
                             nextEpisodeCountdown = nil
                             Task { await startPlayback(for: next, startAt: 0) }
                         }
-                        .buttonStyle(TVPlayerOptionButtonStyle(isSelected: true, accentTint: TVTokens.Color.accent, cornerRadius: 14))
+                        .buttonStyle(TVPlayerOptionButtonStyle(isSelected: true, accentTint: TVTokens.Color.accent, cornerRadius: 999))
                         Button("取消") {
                             nextEpisodeTimerTask?.cancel()
                             nextEpisodeCountdown = nil
                         }
-                        .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: TVTokens.Color.accent, cornerRadius: 14))
+                        .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: TVTokens.Color.accent, cornerRadius: 999))
                     }
                     .focusSection()
                 }
@@ -1247,7 +1294,7 @@ public struct PlayerScreenView: View {
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
                 }
-                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: true, accentTint: TVTokens.Color.accent, cornerRadius: 14))
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: true, accentTint: TVTokens.Color.accent, cornerRadius: 999))
 
                 Button {
                     dismissPlayer()
@@ -1257,7 +1304,7 @@ public struct PlayerScreenView: View {
                         .padding(.horizontal, 24)
                         .padding(.vertical, 12)
                 }
-                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: TVTokens.Color.coral, cornerRadius: 14))
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: TVTokens.Color.coral, cornerRadius: 999))
             }
             .focusSection()
         }
@@ -1347,12 +1394,19 @@ public struct PlayerScreenView: View {
     }
 }
 
+private struct BottomDockHeightPreferenceKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 private final class PlaybackSurfaceUIView: UIView {
     var mountedRevision: Int = -1
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        for sub in subviews {
+        for sub in subviews where sub.translatesAutoresizingMaskIntoConstraints {
             sub.frame = bounds
         }
         CATransaction.begin()
@@ -1375,18 +1429,15 @@ private struct PlaybackContainerView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: PlaybackSurfaceUIView, context: Context) {
-        if uiView.mountedRevision != revision {
-            uiView.mountedRevision = revision
-            switch coordinator.activeEngine {
-            case .ksplayer:
-                coordinator.ksEngine.mount(into: uiView)
-            case .fsplayer, .automatic:
-                coordinator.fsEngine.mount(into: uiView)
-            case .avplayer:
-                coordinator.avEngine.mount(into: uiView)
-            }
-        } else if coordinator.activeEngine == .ksplayer {
-            coordinator.ksEngine.updateMountedView()
+        guard uiView.mountedRevision != revision else { return }
+        uiView.mountedRevision = revision
+        switch coordinator.activeEngine {
+        case .ksplayer:
+            coordinator.ksEngine.mount(into: uiView)
+        case .fsplayer, .automatic:
+            coordinator.fsEngine.mount(into: uiView)
+        case .avplayer:
+            coordinator.avEngine.mount(into: uiView)
         }
     }
 }
