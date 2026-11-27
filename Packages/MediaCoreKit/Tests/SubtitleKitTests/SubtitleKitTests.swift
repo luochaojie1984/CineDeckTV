@@ -39,4 +39,26 @@ struct SubtitleKitTests {
         let ranked = SubtitleMatcher.rank(videoName: video, candidates: candidates)
         #expect(ranked.first?.path == "/b")
     }
+
+    @Test("字幕样式支持字体/底框/位置/对齐且兼容旧版 JSON")
+    func subtitleStyleBackwardCompatibility() throws {
+        var style = SubtitleStyleConfig()
+        style.fontFamily = .rounded
+        style.fontSize = 46
+        style.bottomInset = 88
+        style.backgroundOpacity = 0.68
+        style.alignment = .leading
+        style.forceCustomStyle = true
+
+        let encoded = try JSONEncoder().encode(style)
+        let decoded = try JSONDecoder().decode(SubtitleStyleConfig.self, from: encoded)
+        #expect(decoded == style)
+
+        let legacy = Data("{\"fontSize\": 42, \"foregroundHex\": \"#FFD859\"}".utf8)
+        let legacyDecoded = try JSONDecoder().decode(SubtitleStyleConfig.self, from: legacy)
+        #expect(legacyDecoded.fontSize == 42)
+        #expect(legacyDecoded.foregroundHex == "#FFD859")
+        #expect(legacyDecoded.fontFamily == .system)
+        #expect(legacyDecoded.backgroundOpacity == 0.32)
+    }
 }

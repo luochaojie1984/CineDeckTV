@@ -1,5 +1,12 @@
 import Foundation
 
+/// 同步随机读协议：供直连 FFmpeg AVIO 实时关键帧快进引擎使用（绕开本地 HTTP/TCP 环回开销）。
+public protocol SynchronousRandomAccessReader: Sendable {
+    var totalSize: Int64 { get }
+    func readSync(offset: Int64, length: Int) throws -> Data
+    func closeSync()
+}
+
 /// 统一的网络文件系统访问接口：SMB（AMSMB2）与 WebDAV 各实现一份。
 public protocol VFSProvider: Sendable {
     var kind: MediaSourceKind { get }
@@ -12,9 +19,15 @@ public protocol VFSProvider: Sendable {
     func size(path: String) async throws -> Int64
     /// 为随机读建立常驻句柄（SMB）或复用连接（WebDAV）。
     func makeChunkSource(path: String) async throws -> any StreamChunkSource
+    /// 可选：建立独立同步 SMB 文件句柄用于直连 AVIO 丝滑快进（不支持的源默认返回 nil）。
+    func openSynchronousScrubReader(path: String) async throws -> (any SynchronousRandomAccessReader)?
 }
 
 public extension VFSProvider {
+    func openSynchronousScrubReader(path: String) async throws -> (any SynchronousRandomAccessReader)? {
+        nil
+    }
+
     /// 探测 MP4 顶部 atoms 定位 moov；命中尾部大 moov 时一次拉全表。
     func locateMoov(path: String) async throws -> (offset: Int64, length: Int)? {
         let total = try await size(path: path)

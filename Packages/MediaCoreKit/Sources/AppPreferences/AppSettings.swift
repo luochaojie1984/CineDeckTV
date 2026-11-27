@@ -14,10 +14,11 @@ public struct AppSettings: Codable, Sendable, Equatable {
     }
 
     public enum EnginePreference: String, Codable, Sendable, CaseIterable {
-        case automatic, fsplayer, avplayer
+        case automatic, ksplayer, fsplayer, avplayer
         public var displayName: String {
             switch self {
-            case .automatic: return "自动（FSPlayer 优先）"
+            case .automatic: return "自动（KSPlayer 优先）"
+            case .ksplayer: return "KSPlayer"
             case .fsplayer: return "FSPlayer"
             case .avplayer: return "AVPlayer"
             }
@@ -45,6 +46,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var preferSimplifiedChineseSubtitle: Bool
     public var externalSubtitleDirectories: [String]
     public var rememberLastDirectory: Bool
+
     public enum ShortPressSeekBehavior: String, CaseIterable, Codable, Sendable {
         case fixedStepJump
         case multiStageShuttle
@@ -193,7 +195,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         lastVisitedPaths = try c.decodeIfPresent([String: String].self, forKey: .lastVisitedPaths) ?? [:]
     }
 
-    /// 缓存硬上限：文档要求 <= 192 MB，默认 96 MB。
+    /// 缓存硬上限：<= 192 MB，默认 96 MB。
     public var clampedCacheBytes: Int {
         min(192, max(16, cacheMegabytes)) * 1024 * 1024
     }

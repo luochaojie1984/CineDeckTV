@@ -6,7 +6,7 @@ public protocol StreamChunkSource: Sendable {
     func read(offset: Int64, length: Int) async throws -> Data
 }
 
-/// 预读缓存配置。数值取自设计规划 5.5 / 6.3 的实测结论。
+/// 预读缓存配置。结合 AuraTV 高并发预读与 CineDeckTV Jetsam 192 MB 安全硬上限。
 public struct ReadAheadCacheConfig: Sendable {
     /// 常规播放分块大小：2 MB（始终固定用于 chunks 字典索引，绝不与快进微缓存混用）。
     public var chunkSize: Int = 2 * 1024 * 1024
@@ -18,9 +18,9 @@ public struct ReadAheadCacheConfig: Sendable {
     public var minProtectedEdgeBytes: Int = 4 * 1024 * 1024
     /// 快进模式单次微缓存：512 KB。
     public var scrubBypassChunkSize: Int = 512 * 1024
-    /// 顺序播放向前异步预读块数。
-    public var readAheadChunkCount: Int = 2
-    /// 大跨度随机跳判定阈值（触发取消旧预读任务）。
+    /// 顺序播放向前并发预读块数（4 块并发，对齐 AuraTV 流畅高码率吞吐）。
+    public var readAheadChunkCount: Int = 4
+    /// 大跨度随机跳判定阈值（触发立即取消旧预读任务）。
     public var largeSeekThresholdBytes: Int64 = 8 * 1024 * 1024
 
     public init() {}
@@ -31,8 +31,7 @@ public struct ReadAheadCacheConfig: Sendable {
     }
 }
 
-/// 2 MB 固定分块 + 头尾 moov 钉住 + LRU 淘汰 + 单槽 512 KB 快进微缓存 + 异步顺序预读。
-/// 全部状态由 actor 串行化，跨线程安全。
+/// 2 MB 固定分块 + 头尾 moov 钉住 + LRU 淘汰 + 单槽 512 KB 快进微缓存 + 并发多块顺序预读。
 public actor ReadAheadStreamCache {
     public struct Statistics: Sendable, Equatable {
         public var hits: Int = 0
@@ -58,9 +57,9 @@ public actor ReadAheadStreamCache {
     private var scrubMicroStart: Int64 = -1
     private var scrubMicroData = Data()
 
-    /// 异步预读与并发去重。
+    /// 并发预读与 in-flight 去重。
     private var inFlightLoads: [Int64: Task<Data, Error>] = [:]
-    private var prefetchTask: Task<Void, Never>?
+    private var prefetchTasks: [Int64: Task<Void, Never>] = [:]
     private var lastSequentialEnd: Int64 = -1
 
     public private(set) var statistics = Statistics()
@@ -73,7 +72,7 @@ public actor ReadAheadStreamCache {
     public var isScrubMode: Bool { scrubMode }
     public var contentSize: Int64 { totalSize }
 
-    /// 进入/退出快进绕行：绕行时启用单槽 512 KB 微缓存并取消后台预读，绝不破坏主缓存索引。
+    /// 进入/退出快进绕行：绕行时启用单槽 512 KB 微缓存并立即取消后台预读，绝不破坏主缓存索引。
     public func setScrubMode(_ enabled: Bool) {
         guard scrubMode != enabled else { return }
         scrubMode = enabled
@@ -90,7 +89,7 @@ public actor ReadAheadStreamCache {
         }
     }
 
-    /// 打开文件后非阻塞初始化：记录总长与头尾钉住集合（仅在显式提供 <= 24 MB 的尾部 moov 区间时主动预载，避免开片 32 MB 阻塞）。
+    /// 打开文件后非阻塞初始化：记录总长与头尾钉住集合（仅在显式提供 <= 24 MB 的尾部 moov 区间时主动预载）。
     public func prepare(totalSize size: Int64, moovOffset: Int64? = nil, moovLength: Int = 0) async throws {
         totalSize = size
         guard size > 0 else { return }
@@ -118,7 +117,7 @@ public actor ReadAheadStreamCache {
             return try await readDuringScrub(offset: offset, length: Int(upper))
         }
 
-        // 大跨度跳转时取消旧顺序预读任务，避免浪费局域网带宽。
+        // 大跨度跳转时立即取消旧顺序预读任务，释放局域网带宽。
         if lastSequentialEnd >= 0 && abs(offset - lastSequentialEnd) > config.largeSeekThresholdBytes {
             cancelBackgroundPrefetch()
         }
@@ -128,6 +127,7 @@ public actor ReadAheadStreamCache {
 
         var out = Data(capacity: Int(upper))
         for idx in indexes {
+            try Task.checkCancellation()
             let chunk = try await obtainMainChunk(idx)
             let chunkStart = idx * Int64(config.chunkSize)
             let localStart = max(0, Int(offset - chunkStart))
@@ -188,6 +188,8 @@ public actor ReadAheadStreamCache {
 
     public func trimAll() {
         cancelBackgroundPrefetch()
+        for (_, task) in inFlightLoads { task.cancel() }
+        inFlightLoads.removeAll()
         chunks.removeAll()
         lastUse.removeAll()
         scrubMicroStart = -1
@@ -200,7 +202,6 @@ public actor ReadAheadStreamCache {
     private func readDuringScrub(offset: Int64, length: Int) async throws -> Data {
         let range = offset..<(offset + Int64(length))
         let indexes = chunkIndexes(for: range)
-        // 若全部落在已缓存的 2 MB 块（如头尾 moov 块）中，零额外 I/O 直接命中！
         if indexes.allSatisfy({ chunks[$0] != nil }) {
             var out = Data(capacity: length)
             for idx in indexes {
@@ -219,7 +220,6 @@ public actor ReadAheadStreamCache {
             return out
         }
 
-        // 检查单槽 512 KB 微缓存是否覆盖整个区间
         if scrubMicroStart >= 0,
            offset >= scrubMicroStart,
            offset + Int64(length) <= scrubMicroStart + Int64(scrubMicroData.count) {
@@ -285,24 +285,23 @@ public actor ReadAheadStreamCache {
     private func schedulePrefetch(afterChunk lastIdx: Int64) {
         guard !scrubMode, config.readAheadChunkCount > 0, totalSize > 0 else { return }
         let maxChunkIdx = (totalSize - 1) / Int64(config.chunkSize)
-        var targets: [Int64] = []
         for delta in 1...config.readAheadChunkCount {
             let nextIdx = lastIdx + Int64(delta)
-            if nextIdx <= maxChunkIdx && chunks[nextIdx] == nil && inFlightLoads[nextIdx] == nil {
-                targets.append(nextIdx)
+            guard nextIdx <= maxChunkIdx else { break }
+            if chunks[nextIdx] != nil || prefetchTasks[nextIdx] != nil || inFlightLoads[nextIdx] != nil {
+                continue
             }
-        }
-        guard !targets.isEmpty else { return }
-        cancelBackgroundPrefetch()
-        prefetchTask = Task(priority: .utility) { [weak self] in
-            guard let self else { return }
-            for idx in targets {
-                if Task.isCancelled { return }
-                let stillScrub = await self.isScrubMode
-                if stillScrub { return }
-                await self.prefetchSingleChunk(idx)
+            let task = Task<Void, Never>(priority: .utility) { [weak self] in
+                guard let self else { return }
+                await self.prefetchSingleChunk(nextIdx)
+                await self.clearPrefetchTask(for: nextIdx)
             }
+            prefetchTasks[nextIdx] = task
         }
+    }
+
+    private func clearPrefetchTask(for index: Int64) {
+        prefetchTasks.removeValue(forKey: index)
     }
 
     private func prefetchSingleChunk(_ index: Int64) async {
@@ -316,8 +315,10 @@ public actor ReadAheadStreamCache {
     }
 
     private func cancelBackgroundPrefetch() {
-        prefetchTask?.cancel()
-        prefetchTask = nil
+        for (_, task) in prefetchTasks {
+            task.cancel()
+        }
+        prefetchTasks.removeAll()
     }
 
     private func chunkIndexes(for range: Range<Int64>) -> [Int64] {

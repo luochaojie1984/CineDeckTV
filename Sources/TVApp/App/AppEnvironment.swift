@@ -270,7 +270,9 @@ private actor PreviewVFSProvider: VFSProvider {
             VFSEntry(path: "/沙丘2 (2024) 4K DV HEVC.mp4", name: "沙丘2 (2024) 4K DV HEVC.mp4", isDirectory: false, size: 18_420_000_000, modifiedAt: Date()),
             VFSEntry(path: "/奥本海默 (2023) 2160p HDR10+ HEVC TrueHD.mkv", name: "奥本海默 (2023) 2160p HDR10+ HEVC TrueHD.mkv", isDirectory: false, size: 28_100_000_000, modifiedAt: Date()),
             VFSEntry(path: "/地球脉动 S03E01.2160p.HEVC.mkv", name: "地球脉动 S03E01.2160p.HEVC.mkv", isDirectory: false, size: 6_340_000_000, modifiedAt: Date()),
-            VFSEntry(path: "/星际穿越 (2014) 2160p HDR10 HEVC 10bit Atmos.chs.ass", name: "星际穿越 (2014) 2160p HDR10 HEVC 10bit Atmos.chs.ass", isDirectory: false, size: 128_400, modifiedAt: Date())
+            VFSEntry(path: "/星际穿越 (2014) 2160p HDR10 HEVC 10bit Atmos.chs.ass", name: "星际穿越 (2014) 2160p HDR10 HEVC 10bit Atmos.chs.ass", isDirectory: false, size: 128_400, modifiedAt: Date()),
+            VFSEntry(path: "/星际穿越 (2014).nfo", name: "星际穿越 (2014).nfo", isDirectory: false, size: 4_820, modifiedAt: Date()),
+            VFSEntry(path: "/poster.jpg", name: "poster.jpg", isDirectory: false, size: 642_000, modifiedAt: Date())
         ]
     }
 

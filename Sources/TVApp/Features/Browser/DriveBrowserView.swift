@@ -2,9 +2,10 @@ import SwiftUI
 import NetworkVFS
 import AppPreferences
 
-/// 网盘风格共享浏览器：
-/// - 采用原生 `NavigationStack(path:)` 逐级入栈，遥控器按返回自动退回上一级目录，根目录按返回回到「首页」；
-/// - 海报级多色氛围网格卡片 + 浮动液态玻璃顶栏，彻底消除角标拥挤与边框裁切。
+/// SMB / WebDAV 共享浏览器：
+/// - 默认采用「横条树状排列」，层级枝干一目了然；
+/// - 严格过滤字幕文件（.srt/.ass/.ssa/.vtt/.sub/.sup）及所有不可播放的非视频格式，仅展示共享文件夹与可播放视频；
+/// - 焦点严格约束在条目边框内，绝不越界裁切。
 public struct DriveBrowserView: View {
     @EnvironmentObject private var env: AppEnvironment
     @Binding public var selectedSource: MediaSourceConfig?
@@ -104,10 +105,24 @@ private struct DriveDirectoryPage: View {
     let onPlay: (MediaSourceConfig, VFSEntry) -> Void
     let onOpenSourcesManager: () -> Void
 
-    @AppStorage("cinedeck.browser.isGrid") private var storedIsGrid = true
+    /// 默认横条树状排列（使用新 key 确保升级安装立即生效）。
+    @AppStorage("cinedeck.browser.viewStyleV2") private var storedIsGrid = false
     @State private var entries: [VFSEntry] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
+
+    /// 严格仅展示「文件夹」与「可播放视频」，自动隐藏字幕文件与不支持播放的杂项文件。
+    private var visibleEntries: [VFSEntry] {
+        entries.filter { $0.isDirectory || $0.isVideo }
+    }
+
+    private var directoryCount: Int {
+        visibleEntries.filter(\.isDirectory).count
+    }
+
+    private var videoCount: Int {
+        visibleEntries.filter(\.isVideo).count
+    }
 
     private var effectiveIsGrid: Bool {
         if env.previewScenario == .browserGrid { return true }
@@ -124,7 +139,7 @@ private struct DriveDirectoryPage: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 18) {
             toolbar
                 .focusSection()
 
@@ -135,7 +150,7 @@ private struct DriveDirectoryPage: View {
                 } else if isLoading && entries.isEmpty {
                     ProgressView("正在读取共享目录…")
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if entries.isEmpty {
+                } else if visibleEntries.isEmpty {
                     emptyFolderCard
                         .focusSection()
                 } else {
@@ -144,7 +159,7 @@ private struct DriveDirectoryPage: View {
                             gridContent(source: source)
                                 .focusSection()
                         } else {
-                            listContent(source: source)
+                            treeListContent(source: source)
                                 .focusSection()
                         }
                     }
@@ -156,8 +171,8 @@ private struct DriveDirectoryPage: View {
             }
         }
         .padding(.horizontal, TVTokens.Spacing.browserHorizontal)
-        .padding(.top, 22)
-        .padding(.bottom, 28)
+        .padding(.top, 20)
+        .padding(.bottom, 24)
         .task(id: "\(source?.id.uuidString ?? "none")::\(currentPath)") {
             await loadDirectory()
         }
@@ -175,7 +190,7 @@ private struct DriveDirectoryPage: View {
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
                 }
-                .tvAdaptiveGlassButtonStyle()
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: TVTokens.Color.accent, cornerRadius: 16))
             }
 
             HStack(spacing: 16) {
@@ -190,31 +205,32 @@ private struct DriveDirectoryPage: View {
                         Text(source?.name ?? "未连接片源")
                             .font(TVTokens.Typography.directoryTitle)
                             .lineLimit(1)
-                        if !entries.isEmpty {
-                            Text("\(entries.count) 项")
+                        if !visibleEntries.isEmpty {
+                            Text("\(directoryCount) 目录 · \(videoCount) 视频")
                                 .font(.system(size: 16, weight: .bold))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 3)
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 4)
                                 .background(.white.opacity(0.10), in: Capsule())
                                 .foregroundStyle(TVTokens.Color.secondaryText)
                         }
                     }
 
                     HStack(spacing: 6) {
-                        Text("/")
+                        Image(systemName: "list.bullet.indent")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(TVTokens.Color.accent)
+                        Text(source?.sharePath.isEmpty == false ? source!.sharePath : "/")
                             .font(.system(size: 17, weight: .bold, design: .monospaced))
                             .foregroundStyle(TVTokens.Color.accent)
                         if pathSegments.isEmpty {
-                            Text("共享根目录")
+                            Text("· 共享目录树")
                                 .font(.system(size: 17, weight: .medium))
                                 .foregroundStyle(TVTokens.Color.secondaryText)
                         } else {
-                            ForEach(Array(pathSegments.enumerated()), id: \.offset) { idx, seg in
-                                if idx > 0 {
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 13, weight: .bold))
-                                        .foregroundStyle(TVTokens.Color.tertiaryText)
-                                }
+                            ForEach(Array(pathSegments.enumerated()), id: \.offset) { _, seg in
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundStyle(TVTokens.Color.tertiaryText)
                                 Text(seg)
                                     .font(.system(size: 17, weight: .medium))
                                     .foregroundStyle(TVTokens.Color.secondaryText)
@@ -227,44 +243,18 @@ private struct DriveDirectoryPage: View {
 
             Spacer()
 
-            AdaptiveGlassContainer(spacing: 12) {
-                HStack(spacing: 12) {
-                    if env.sources.count > 1, let current = source {
-                        Menu {
-                            ForEach(env.sources) { src in
-                                Button {
-                                    selectedSource = src
-                                } label: {
-                                    Label(src.name, systemImage: src.id == current.id ? "checkmark" : (src.kind == .smb ? "externaldrive.fill" : "globe"))
-                                }
+            HStack(spacing: 12) {
+                if env.sources.count > 1, let current = source {
+                    Menu {
+                        ForEach(env.sources) { src in
+                            Button {
+                                selectedSource = src
+                            } label: {
+                                Label(src.name, systemImage: src.id == current.id ? "checkmark" : (src.kind == .smb ? "externaldrive.fill" : "globe"))
                             }
-                        } label: {
-                            Label("切换服务器", systemImage: "arrow.left.arrow.right")
-                                .font(TVTokens.Typography.button)
-                                .lineLimit(1)
-                                .padding(.horizontal, 18)
-                                .padding(.vertical, 12)
-                        }
-                        .tvAdaptiveGlassButtonStyle()
-                    }
-
-                    Button {
-                        withAnimation(TVTokens.Motion.panel) {
-                            storedIsGrid.toggle()
                         }
                     } label: {
-                        Label(effectiveIsGrid ? "列表视图" : "网格视图", systemImage: effectiveIsGrid ? "list.bullet" : "square.grid.2x2")
-                            .font(TVTokens.Typography.button)
-                            .lineLimit(1)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 12)
-                    }
-                    .tvAdaptiveGlassButtonStyle()
-
-                    Button {
-                        Task { await loadDirectory() }
-                    } label: {
-                        Label("刷新", systemImage: "arrow.clockwise")
+                        Label("切换服务器", systemImage: "arrow.left.arrow.right")
                             .font(TVTokens.Typography.button)
                             .lineLimit(1)
                             .padding(.horizontal, 18)
@@ -272,6 +262,30 @@ private struct DriveDirectoryPage: View {
                     }
                     .tvAdaptiveGlassButtonStyle()
                 }
+
+                Button {
+                    withAnimation(TVTokens.Motion.panel) {
+                        storedIsGrid.toggle()
+                    }
+                } label: {
+                    Label(effectiveIsGrid ? "树状横条" : "网格视图", systemImage: effectiveIsGrid ? "list.bullet.indent" : "square.grid.2x2")
+                        .font(TVTokens.Typography.button)
+                        .lineLimit(1)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: TVTokens.Color.accent, cornerRadius: 16))
+
+                Button {
+                    Task { await loadDirectory() }
+                } label: {
+                    Label("刷新", systemImage: "arrow.clockwise")
+                        .font(TVTokens.Typography.button)
+                        .lineLimit(1)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(TVPlayerOptionButtonStyle(isSelected: false, accentTint: TVTokens.Color.accent, cornerRadius: 16))
             }
         }
         .padding(.horizontal, 22)
@@ -279,18 +293,148 @@ private struct DriveDirectoryPage: View {
         .tvGlassSurface(cornerRadius: TVTokens.Radius.panel, clear: false)
     }
 
+    /// 横条树状排列视图：左侧树状枝干线 + 缩进层级节点 + 严格边框内聚焦横条。
+    private func treeListContent(source: MediaSourceConfig) -> some View {
+        let items = visibleEntries
+        let depth = min(pathSegments.count, 3)
+        let leadingIndent = CGFloat(depth) * 28
+
+        return LazyVStack(alignment: .leading, spacing: 12) {
+            // 树根节点标头行
+            HStack(spacing: 12) {
+                Image(systemName: isAtRoot ? "externaldrive.connected.to.line.below.fill" : "folder.fill")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(isAtRoot ? TVTokens.Color.accent : TVTokens.Color.folderTint)
+                Text(isAtRoot ? "\(source.name)（共享根目录）" : (pathSegments.last ?? currentPath))
+                    .font(.system(size: 21, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.92))
+                Text("仅显示文件夹与可播放视频")
+                    .font(.system(size: 15, weight: .semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(TVTokens.Color.accent.opacity(0.16), in: Capsule())
+                    .foregroundStyle(TVTokens.Color.accent)
+                Spacer()
+            }
+            .padding(.leading, leadingIndent + 12)
+            .padding(.bottom, 2)
+
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, entry in
+                let isLast = (index == items.count - 1)
+                let theme = TVMediaTheme.palette(forTitle: entry.name, isDirectory: entry.isDirectory, isSubtitle: false)
+
+                HStack(spacing: 0) {
+                    if leadingIndent > 0 {
+                        Spacer().frame(width: leadingIndent)
+                    }
+
+                    // 树状枝干连接器（纵线 + L形支线 + 节点圆点）
+                    TreeBranchIndicator(
+                        isDirectory: entry.isDirectory,
+                        isLast: isLast,
+                        tint: theme.primary
+                    )
+                    .frame(width: 38, height: 84)
+
+                    Button {
+                        open(entry, source: source)
+                    } label: {
+                        HStack(spacing: 18) {
+                            Image(systemName: theme.symbol)
+                                .font(.system(size: 26, weight: .semibold))
+                                .frame(width: 56, height: 56)
+                                .background(
+                                    LinearGradient(
+                                        colors: [theme.primary.opacity(0.42), theme.secondary.opacity(0.18)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .strokeBorder(theme.primary.opacity(0.48), lineWidth: 1)
+                                )
+                                .foregroundStyle(.white)
+
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text(entry.isDirectory ? entry.name : TVTitleFormatter.cleanDisplayTitle(entry.name))
+                                    .font(TVTokens.Typography.listPrimary)
+                                    .lineLimit(1)
+
+                                if entry.isDirectory {
+                                    HStack(spacing: 8) {
+                                        Text("共享文件夹")
+                                            .foregroundStyle(theme.primary)
+                                        Text("·")
+                                        Text("按确定进入下级目录")
+                                    }
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundStyle(TVTokens.Color.secondaryText)
+                                } else {
+                                    HStack(spacing: 12) {
+                                        Text(entry.fileExtension.uppercased())
+                                            .font(.system(size: 14, weight: .heavy, design: .monospaced))
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 2)
+                                            .background(theme.primary.opacity(0.22), in: Capsule())
+                                            .foregroundStyle(theme.primary)
+                                        Text(formatSize(entry.size))
+                                        if let record = historyRecord(for: entry, source: source), record.duration > 0 {
+                                            Text("·")
+                                            Text("已播 \(Int(record.progress * 100))%")
+                                                .fontWeight(.bold)
+                                                .foregroundStyle(theme.primary)
+                                            TVProgressBar(progress: record.progress, tint: theme.primary, secondaryTint: theme.secondary, height: 5)
+                                                .frame(width: 96)
+                                        }
+                                    }
+                                    .font(.system(size: 17, weight: .medium))
+                                    .foregroundStyle(TVTokens.Color.secondaryText)
+                                }
+                            }
+
+                            Spacer(minLength: 16)
+
+                            if entry.isVideo {
+                                VideoBadgeRow(entry.badges, maxCount: 4)
+                            } else {
+                                Text("目录")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 5)
+                                    .background(theme.primary.opacity(0.18), in: Capsule())
+                                    .foregroundStyle(theme.primary)
+                            }
+
+                            Image(systemName: entry.isDirectory ? "chevron.right" : "play.circle.fill")
+                                .font(.system(size: entry.isDirectory ? 20 : 26, weight: .bold))
+                                .foregroundStyle(entry.isDirectory ? TVTokens.Color.secondaryText : theme.primary)
+                        }
+                        .padding(.leading, 22)
+                        .padding(.trailing, 22)
+                        .padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(TVListRowButtonStyle(accentTint: theme.primary))
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
+    }
+
     private func gridContent(source: MediaSourceConfig) -> some View {
         LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: TVTokens.Spacing.gridSpacing), count: 3),
             spacing: TVTokens.Spacing.gridSpacing
         ) {
-            ForEach(entries) { entry in
-                let theme = TVMediaTheme.palette(forTitle: entry.name, isDirectory: entry.isDirectory, isSubtitle: entry.isSubtitle)
+            ForEach(visibleEntries) { entry in
+                let theme = TVMediaTheme.palette(forTitle: entry.name, isDirectory: entry.isDirectory, isSubtitle: false)
                 Button {
                     open(entry, source: source)
                 } label: {
                     VStack(alignment: .leading, spacing: 0) {
-                        // 顶部彩色氛围海报头：杜绝徽章与图标相互挤压
                         ZStack(alignment: .topLeading) {
                             LinearGradient(
                                 colors: [theme.primary.opacity(0.32), theme.secondary.opacity(0.20), Color.black.opacity(0.14)],
@@ -335,7 +479,7 @@ private struct DriveDirectoryPage: View {
 
                             if entry.isDirectory {
                                 HStack {
-                                    Text("目录")
+                                    Text("共享文件夹")
                                     Spacer()
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 16, weight: .bold))
@@ -353,7 +497,7 @@ private struct DriveDirectoryPage: View {
                                     }
                                 } else {
                                     HStack {
-                                        Text(entry.isVideo ? theme.tag : "字幕文件")
+                                        Text(theme.tag)
                                             .foregroundStyle(theme.primary)
                                         Spacer()
                                         Text(formatSize(entry.size))
@@ -369,75 +513,11 @@ private struct DriveDirectoryPage: View {
                     }
                     .frame(height: TVTokens.Size.gridCardHeight)
                 }
-                .buttonStyle(TVCardButtonStyle(accentTint: theme.primary))
+                .buttonStyle(TVCardButtonStyle(focusedScale: 1.0, accentTint: theme.primary))
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 24)
         .padding(.vertical, 20)
-    }
-
-    private func listContent(source: MediaSourceConfig) -> some View {
-        LazyVStack(spacing: 14) {
-            ForEach(entries) { entry in
-                let theme = TVMediaTheme.palette(forTitle: entry.name, isDirectory: entry.isDirectory, isSubtitle: entry.isSubtitle)
-                Button {
-                    open(entry, source: source)
-                } label: {
-                    HStack(spacing: 18) {
-                        Image(systemName: theme.symbol)
-                            .font(.system(size: 28, weight: .semibold))
-                            .frame(width: TVTokens.Size.listIcon, height: TVTokens.Size.listIcon)
-                            .background(
-                                LinearGradient(colors: [theme.primary.opacity(0.40), theme.secondary.opacity(0.18)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                                in: RoundedRectangle(cornerRadius: TVTokens.Radius.iconBlock, style: .continuous)
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: TVTokens.Radius.iconBlock, style: .continuous)
-                                    .strokeBorder(theme.primary.opacity(0.45), lineWidth: 1)
-                            )
-                            .foregroundStyle(.white)
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(entry.isDirectory ? entry.name : TVTitleFormatter.cleanDisplayTitle(entry.name))
-                                .font(TVTokens.Typography.listPrimary)
-                                .lineLimit(1)
-
-                            if entry.isDirectory {
-                                Text("文件夹")
-                                    .font(TVTokens.Typography.secondary)
-                                    .foregroundStyle(TVTokens.Color.secondaryText)
-                            } else {
-                                HStack(spacing: 12) {
-                                    Text(formatSize(entry.size))
-                                    if let record = historyRecord(for: entry, source: source), record.duration > 0 {
-                                        Text("·")
-                                        Text("已播 \(Int(record.progress * 100))%")
-                                            .fontWeight(.bold)
-                                            .foregroundStyle(theme.primary)
-                                    }
-                                }
-                                .font(TVTokens.Typography.secondary)
-                                .foregroundStyle(TVTokens.Color.secondaryText)
-                            }
-                        }
-
-                        Spacer(minLength: 16)
-
-                        if entry.isVideo {
-                            VideoBadgeRow(entry.badges, maxCount: 4)
-                        }
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundStyle(TVTokens.Color.secondaryText)
-                    }
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 14)
-                }
-                .buttonStyle(TVListRowButtonStyle(accentTint: theme.primary))
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
     }
 
     private var emptyFolderCard: some View {
@@ -445,7 +525,7 @@ private struct DriveDirectoryPage: View {
             Image(systemName: "folder.badge.questionmark")
                 .font(.system(size: 52))
                 .foregroundStyle(TVTokens.Color.secondaryText)
-            Text("当前目录为空")
+            Text("当前目录没有可播放的视频或文件夹")
                 .font(TVTokens.Typography.sectionTitle)
             if !isAtRoot {
                 Button("返回上级目录") {
@@ -539,5 +619,34 @@ private struct DriveDirectoryPage: View {
 
     private func formatSize(_ bytes: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+}
+
+/// 树状枝干指示线：为横条目录与视频项提供清晰的树形层级视觉锚点。
+private struct TreeBranchIndicator: View {
+    let isDirectory: Bool
+    let isLast: Bool
+    let tint: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            let midY = geo.size.height * 0.5
+            let railX: CGFloat = 14
+            ZStack {
+                Path { path in
+                    path.move(to: CGPoint(x: railX, y: -8))
+                    path.addLine(to: CGPoint(x: railX, y: isLast ? midY : geo.size.height + 8))
+                    path.move(to: CGPoint(x: railX, y: midY))
+                    path.addLine(to: CGPoint(x: geo.size.width - 8, y: midY))
+                }
+                .stroke(Color.white.opacity(0.24), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+
+                Circle()
+                    .fill(isDirectory ? tint : tint.opacity(0.85))
+                    .frame(width: isDirectory ? 9 : 7, height: isDirectory ? 9 : 7)
+                    .position(x: geo.size.width - 6, y: midY)
+            }
+        }
+        .allowsHitTesting(false)
     }
 }

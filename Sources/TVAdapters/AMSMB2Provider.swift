@@ -238,6 +238,27 @@ public final class AMSMB2Provider: VFSProvider, @unchecked Sendable {
         }
     }
 
+    /// 打开独立常驻 SMB2 句柄供直连 FFmpeg AVIO 实时关键帧快进（零 HTTP 环回开销，不阻塞主播放流）。
+    public func openSynchronousScrubReader(path: String) async throws -> (any SynchronousRandomAccessReader)? {
+        let manager = try currentManager()
+        guard let resolved = resolveShareAndRelativePath(path) else {
+            throw VFSError.notFound(path)
+        }
+        try await ensureShareConnected(resolved.share, using: manager)
+        do {
+            let raf = try await manager.openRandomAccessFile(shareName: resolved.share, atPath: resolved.relativePath)
+            return SMB2SynchronousReader(file: raf)
+        } catch {
+            try await ensureShareConnected(resolved.share, using: manager, forceReconnect: true)
+            do {
+                let raf = try await manager.openRandomAccessFile(shareName: resolved.share, atPath: resolved.relativePath)
+                return SMB2SynchronousReader(file: raf)
+            } catch {
+                throw Self.classifySMBError(error, target: path)
+            }
+        }
+    }
+
     /// 局域网 SMB2 读取吞吐测速（默认采样 20 MB，用于诊断 100M / 1000M 有线及 Wi-Fi 真实带宽）。
     public func benchmarkThroughput(at path: String, sampleBytes: Int64 = 20 * 1024 * 1024) async throws -> (bytesRead: Int64, seconds: Double, megabytesPerSec: Double) {
         let source = try await makeChunkSource(path: path)
@@ -474,5 +495,23 @@ private final class TCPPreflightCoordinator: @unchecked Sendable {
             }
             self.connection.start(queue: self.queue)
         }
+    }
+}
+
+/// 常驻 SMB2 同步读取器：封装独立 `SMB2RandomAccessFile` 供 `LiveKeyframeScrubEngine` 直接喂给 FFmpeg AVIO。
+private final class SMB2SynchronousReader: SynchronousRandomAccessReader, @unchecked Sendable {
+    private let file: SMB2RandomAccessFile
+    var totalSize: Int64 { file.totalSize }
+
+    init(file: SMB2RandomAccessFile) {
+        self.file = file
+    }
+
+    func readSync(offset: Int64, length: Int) throws -> Data {
+        try file.readSync(offset: offset, length: length)
+    }
+
+    func closeSync() {
+        file.close()
     }
 }

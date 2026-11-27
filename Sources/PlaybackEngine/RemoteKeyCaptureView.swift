@@ -2,10 +2,20 @@ import Foundation
 import UIKit
 
 /// Siri Remote 底层捕获：区分短按（跳秒）、长按（连续加速）、触控板左右划动、Menu、上键呼出面板与播放暂停。
-/// HUD 或抽屉弹出时必须把 isCaptureEnabled 置 false 并关闭 allowsHitTesting，绝不抢 SwiftUI 控件焦点。
+/// 关键修复：HUD 或底部设置面板弹出时 `isCaptureEnabled = false` 同步让 `canBecomeFocused` 返回 `false`，
+/// 绝不抢占 tvOS 焦点，确保遥控器左右/上下键可顺畅调节设置选项。
 @MainActor
 public final class RemoteKeyCaptureView: UIView {
-    public var isCaptureEnabled = true { didSet { if !isCaptureEnabled { resetPress() } } }
+    public var isCaptureEnabled = true {
+        didSet {
+            if !isCaptureEnabled { resetPress() }
+            if oldValue != isCaptureEnabled {
+                isUserInteractionEnabled = isCaptureEnabled
+                setNeedsFocusUpdate()
+                updateFocusIfNeeded()
+            }
+        }
+    }
     public var enableTouchpadScrub = true
 
     public var onShortPress: ((_ forward: Bool) -> Void)?
@@ -38,7 +48,18 @@ public final class RemoteKeyCaptureView: UIView {
 
     public required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    public override var canBecomeFocused: Bool { true }
+    public override var canBecomeFocused: Bool { isCaptureEnabled }
+
+    public override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil && isCaptureEnabled {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.isCaptureEnabled else { return }
+                self.setNeedsFocusUpdate()
+                self.updateFocusIfNeeded()
+            }
+        }
+    }
 
     @objc private func handleTouchpadPan(_ recognizer: UIPanGestureRecognizer) {
         guard isCaptureEnabled, enableTouchpadScrub else { return }
@@ -48,7 +69,6 @@ public final class RemoteKeyCaptureView: UIView {
             panAccumulatedDelta = 0
             onTouchpadPanBegan?()
         case .changed:
-            // 将触控板横向位移平滑映射为进度秒数（~120pt ≈ 30s）
             let deltaSec = Double(translationX) * 0.25
             panAccumulatedDelta = deltaSec
             onTouchpadPanChanged?(deltaSec)

@@ -1,7 +1,7 @@
 import SwiftUI
 import SubtitleKit
 
-/// SwiftUI 文本字幕叠加层：供 AVPlayer 回退路径或自定义纯文本外挂字幕渲染，严格避让安全区并支持字号/颜色/描边/底距与偏移秒。
+/// SwiftUI 实时文本字幕渲染层：支持字体、字号、底距位置、文字颜色、描边粗细、底框透明度、对齐方式与时间轴偏移实时生效。
 public struct SubtitleOverlayView: View {
     public let cues: [SubtitleCue]
     public let currentTime: TimeInterval
@@ -23,21 +23,57 @@ public struct SubtitleOverlayView: View {
         VStack {
             Spacer()
             if let text = activeCueText, !text.isEmpty {
-                Text(text)
-                    .font(.system(size: CGFloat(style.fontSize), weight: .semibold))
+                styledSubtitleText(text)
                     .multilineTextAlignment(textAlignment)
-                    .foregroundStyle(Color(hex: style.foregroundHex) ?? .white)
-                    .shadow(color: (Color(hex: style.outlineHex) ?? .black).opacity(0.95), radius: CGFloat(max(1, style.outlineWidth)), x: 0, y: 1)
-                    .shadow(color: .black.opacity(0.75), radius: CGFloat(max(1, style.outlineWidth * 1.4)), x: 0, y: 2)
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.32), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, style.backgroundOpacity > 0.02 ? 28 : 10)
+                    .padding(.vertical, style.backgroundOpacity > 0.02 ? 12 : 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.black.opacity(min(0.85, max(0, style.backgroundOpacity))))
+                    )
                     .frame(maxWidth: .infinity, alignment: frameAlignment)
-                    .padding(.horizontal, 120)
-                    .padding(.bottom, CGFloat(max(24, style.bottomInset)))
+                    .padding(.horizontal, 96)
+                    .padding(.bottom, CGFloat(max(12, style.bottomInset)))
             }
         }
         .allowsHitTesting(false)
+    }
+
+    @ViewBuilder
+    private func styledSubtitleText(_ text: String) -> some View {
+        let fg = Color(hex: style.foregroundHex) ?? .white
+        let outline = Color(hex: style.outlineHex) ?? .black
+        let stroke = CGFloat(min(6, max(0, style.outlineWidth)))
+
+        let base = Text(text)
+            .font(resolvedFont)
+            .foregroundStyle(fg)
+
+        if stroke > 0.1 {
+            base
+                .shadow(color: outline.opacity(0.96), radius: stroke * 0.55, x: stroke * 0.45, y: stroke * 0.45)
+                .shadow(color: outline.opacity(0.96), radius: stroke * 0.55, x: -stroke * 0.45, y: -stroke * 0.45)
+                .shadow(color: outline.opacity(0.90), radius: stroke * 0.9, x: 0, y: stroke * 0.7)
+        } else {
+            base
+                .shadow(color: .black.opacity(0.45), radius: 2, x: 0, y: 1)
+        }
+    }
+
+    private var resolvedFont: Font {
+        let size = CGFloat(min(84, max(20, style.fontSize)))
+        switch style.fontFamily {
+        case .system:
+            return .system(size: size, weight: .semibold, design: .default)
+        case .rounded:
+            return .system(size: size, weight: .semibold, design: .rounded)
+        case .heavy:
+            return .system(size: size, weight: .heavy, design: .default)
+        case .serif:
+            return .system(size: size, weight: .semibold, design: .serif)
+        case .monospaced:
+            return .system(size: size, weight: .medium, design: .monospaced)
+        }
     }
 
     private var textAlignment: TextAlignment {

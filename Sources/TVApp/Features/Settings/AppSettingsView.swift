@@ -27,7 +27,7 @@ public struct AppSettingsView: View {
 
         var subtitle: String {
             switch self {
-            case .playback: return "双引擎、硬解与变速曲线"
+            case .playback: return "三引擎、硬解与变速曲线"
             case .scrubbing: return "短按、长按与 Siri 触控"
             case .appearance: return "悬浮胶囊高亮与画面比例"
             case .storage: return "192 MB 上限与续播策略"
@@ -66,7 +66,7 @@ public struct AppSettingsView: View {
                 Spacer()
                 HStack(spacing: 10) {
                     Circle().fill(TVTokens.Color.emerald).frame(width: 8, height: 8)
-                    Text("CineDeckTV 0.3.0 · Dual Engine")
+                    Text("CineDeckTV 0.4.0 · KS + FS + AV")
                         .font(.system(size: 18, weight: .semibold, design: .monospaced))
                         .foregroundStyle(TVTokens.Color.secondaryText)
                 }
@@ -155,10 +155,10 @@ public struct AppSettingsView: View {
     private var categoryDetailContent: some View {
         switch selectedCategory {
         case .playback:
-            settingCard(title: "播放内核", subtitle: "FSPlayer (FFmpeg 7 + Metal) 主攻 MKV/HDR/外挂字幕，AVPlayer 负责杜比视界") {
+            settingCard(title: "播放内核", subtitle: "默认以 KSPlayer 5.6 (异步硬解 + Metal) 为主力，完整保留 FSPlayer 与 AVPlayer 随时切换") {
                 gridChoices(
                     items: AppSettings.EnginePreference.allCases.map { ($0, $0.displayName) },
-                    columns: 3,
+                    columns: 2,
                     selected: env.settings.enginePreference,
                     tint: TVTokens.Color.accent
                 ) { value in

@@ -60,4 +60,18 @@ struct AppPreferencesTests {
         #expect(legacyDecoded.enableResumePlayback == true)
         #expect(legacyDecoded.scrubBarColorHex == "#38BDF8")
     }
+
+    @Test("三引擎偏好包含 KSPlayer / FSPlayer / AVPlayer 且默认自动 KS 优先")
+    func ksplayerEnginePreferenceRoundTrip() throws {
+        var settings = AppSettings()
+        #expect(settings.enginePreference == .automatic)
+        #expect(AppSettings.EnginePreference.allCases.contains(.ksplayer))
+        #expect(AppSettings.EnginePreference.allCases.contains(.fsplayer))
+        #expect(AppSettings.EnginePreference.allCases.contains(.avplayer))
+
+        settings.enginePreference = .ksplayer
+        let data = try JSONEncoder().encode(settings)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
+        #expect(decoded.enginePreference == .ksplayer)
+    }
 }

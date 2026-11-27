@@ -6,11 +6,11 @@ import Darwin
 import Glibc
 #endif
 
-/// 本地 127.0.0.1 流式 HTTP/1.1 Range 代理：把 VFS 缓存包装成播放器可直接吃的短 ASCII URL。
-/// 关键约束：
-/// 1. start() 同步完成 socket/bind/listen 并填充 port，彻底消除异步竞态导致的"本地代理未就绪"。
-/// 2. 支持 HEAD、GET、Range (206 / 416) 与分片流式写回（常规 256 KB / 快进 64 KB + SO_SNDBUF=65536），绝不一次性分配数 GB 内存。
-/// 3. 仅在 scrubMode == true 时取消旧未完成快进请求；正常并发 Range 互不干扰。
+/// 本地 127.0.0.1 高吞吐流式 HTTP/1.1 Range 代理：把 VFS 缓存包装成播放器可直接吃的短 ASCII URL。
+/// 关键优化（对齐 AuraTV 丝滑播放体验）：
+/// 1. start() 同步完成 socket/bind/listen 并填充 port，消除异步竞态。
+/// 2. 接受连接后在独立并发任务中读头与流式写回，彻底消除 actor 队头阻塞（支持 KSPlayer / FSPlayer / AVPlayer 并发 Range 探测与高码率 4K 推流）。
+/// 3. 常规播放 512 KB 切片 + 512 KB SO_SNDBUF，快进模式 64 KB 切片 + 64 KB SO_SNDBUF + 取消陈旧快进请求。
 public actor LocalHTTPStreamProxy {
     public struct Route: Sendable, Hashable {
         public let token: String
@@ -35,6 +35,7 @@ public actor LocalHTTPStreamProxy {
     private let cache: ReadAheadStreamCache
     private var server: POSIXLoopbackServer?
     private var routes: [String: Route] = [:]
+    private var activeTasks: [UUID: Task<Void, Never>] = [:]
     private var activeScrubTasks: [UUID: Task<Void, Never>] = [:]
     private var scrubMode = false
     public private(set) var port: UInt16?
@@ -43,7 +44,7 @@ public actor LocalHTTPStreamProxy {
         self.cache = cache
     }
 
-    /// 注册文件路由，返回短 ASCII 播放地址（与真实中文/日文长文件名彻底隔离）。
+    /// 注册文件路由，返回短 ASCII 播放地址（保留扩展名，与真实中文/日文长文件名彻底隔离）。
     public func register(fileExtension: String) -> Route {
         let token = String(UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(12)).lowercased()
         let ext = fileExtension.isEmpty ? "bin" : fileExtension.lowercased()
@@ -71,13 +72,17 @@ public actor LocalHTTPStreamProxy {
                 POSIXLoopbackServer.closeFD(fd)
                 return
             }
-            Task { await self.handleAcceptedClient(fd) }
+            Task.detached(priority: .userInitiated) {
+                await self.serveDetachedClient(fd)
+            }
         }
         self.server = srv
         self.port = srv.port
     }
 
     public func stop() {
+        for task in activeTasks.values { task.cancel() }
+        activeTasks.removeAll()
         for task in activeScrubTasks.values { task.cancel() }
         activeScrubTasks.removeAll()
         server?.stop()
@@ -113,11 +118,30 @@ public actor LocalHTTPStreamProxy {
         return (start, end)
     }
 
-    private func handleAcceptedClient(_ fd: Int32) async {
-        // 读取 HTTP 请求头（短超时防阻塞）
-        guard let requestData = await Task.detached(priority: .userInitiated, operation: {
-            Self.readHTTPHeader(fd: fd)
-        }).value else {
+    private func lookupRouteAndPrepare(target: String, method: String) -> (route: Route, isScrub: Bool, cache: ReadAheadStreamCache)? {
+        guard let route = routes[target] else { return nil }
+        if scrubMode && method == "GET" {
+            for existing in activeScrubTasks.values { existing.cancel() }
+            activeScrubTasks.removeAll()
+        }
+        return (route, scrubMode, cache)
+    }
+
+    private func registerTask(_ task: Task<Void, Never>, id: UUID, isScrubGet: Bool) {
+        activeTasks[id] = task
+        if isScrubGet {
+            activeScrubTasks[id] = task
+        }
+    }
+
+    private func unregisterTask(id: UUID) {
+        activeTasks.removeValue(forKey: id)
+        activeScrubTasks.removeValue(forKey: id)
+    }
+
+    /// 在 actor 外并发处理完整 HTTP 连接生命周期，避免大流传输阻塞其他并发 Range 请求。
+    private nonisolated func serveDetachedClient(_ fd: Int32) async {
+        guard let requestData = Self.readHTTPHeader(fd: fd) else {
             POSIXLoopbackServer.closeFD(fd)
             return
         }
@@ -127,7 +151,7 @@ public actor LocalHTTPStreamProxy {
         let firstLine = lines.first ?? ""
         let parts = firstLine.split(separator: " ")
         guard parts.count >= 2 else {
-            await Self.sendSimpleStatus(fd: fd, code: 400, reason: "Bad Request")
+            Self.sendSimpleStatusSync(fd: fd, code: 400, reason: "Bad Request")
             POSIXLoopbackServer.closeFD(fd)
             return
         }
@@ -138,14 +162,14 @@ public actor LocalHTTPStreamProxy {
             target = String(target[..<qIdx])
         }
 
-        guard let route = routes[target] else {
-            await Self.sendSimpleStatus(fd: fd, code: 404, reason: "Not Found")
+        guard method == "GET" || method == "HEAD" else {
+            Self.sendSimpleStatusSync(fd: fd, code: 405, reason: "Method Not Allowed")
             POSIXLoopbackServer.closeFD(fd)
             return
         }
 
-        guard method == "GET" || method == "HEAD" else {
-            await Self.sendSimpleStatus(fd: fd, code: 405, reason: "Method Not Allowed")
+        guard let resolved = await lookupRouteAndPrepare(target: target, method: method) else {
+            Self.sendSimpleStatusSync(fd: fd, code: 404, reason: "Not Found")
             POSIXLoopbackServer.closeFD(fd)
             return
         }
@@ -154,18 +178,18 @@ public actor LocalHTTPStreamProxy {
             .first { $0.lowercased().hasPrefix("range:") }
             .map { String($0.dropFirst(6)).trimmingCharacters(in: .whitespaces) }
 
-        if scrubMode && method == "GET" {
-            for existing in activeScrubTasks.values { existing.cancel() }
-            activeScrubTasks.removeAll()
-        }
-
         let taskID = UUID()
-        let isScrub = scrubMode
-        let cacheRef = cache
-        let mime = Self.mimeType(forPath: route.path)
+        let isScrub = resolved.isScrub
+        let cacheRef = resolved.cache
+        let mime = Self.mimeType(forPath: resolved.route.path)
 
-        let task = Task(priority: .userInitiated) {
-            defer { POSIXLoopbackServer.closeFD(fd) }
+        let streamTask = Task.detached(priority: .userInitiated) { [weak self] in
+            defer {
+                POSIXLoopbackServer.closeFD(fd)
+                if let self {
+                    Task { await self.unregisterTask(id: taskID) }
+                }
+            }
             do {
                 let total = try await cacheRef.fetchContentSize()
                 if let rangeHeader {
@@ -201,7 +225,7 @@ public actor LocalHTTPStreamProxy {
                         cache: cacheRef,
                         start: start,
                         end: end,
-                        sliceSize: isScrub ? 64 * 1024 : 256 * 1024,
+                        sliceSize: isScrub ? 64 * 1024 : 512 * 1024,
                         lowWaterBuffer: isScrub
                     )
                 } else {
@@ -221,7 +245,7 @@ public actor LocalHTTPStreamProxy {
                         cache: cacheRef,
                         start: 0,
                         end: total - 1,
-                        sliceSize: isScrub ? 64 * 1024 : 256 * 1024,
+                        sliceSize: isScrub ? 64 * 1024 : 512 * 1024,
                         lowWaterBuffer: isScrub
                     )
                 }
@@ -232,13 +256,7 @@ public actor LocalHTTPStreamProxy {
             }
         }
 
-        if isScrub && method == "GET" {
-            activeScrubTasks[taskID] = task
-        }
-        await task.value
-        if isScrub && method == "GET" {
-            activeScrubTasks.removeValue(forKey: taskID)
-        }
+        await registerTask(streamTask, id: taskID, isScrubGet: isScrub && method == "GET")
     }
 
     private nonisolated static func mimeType(forPath path: String) -> String {
@@ -256,11 +274,7 @@ public actor LocalHTTPStreamProxy {
     }
 
     private nonisolated static func readHTTPHeader(fd: Int32) -> Data? {
-        #if os(Linux)
         var tv = timeval(tv_sec: 5, tv_usec: 0)
-        #else
-        var tv = timeval(tv_sec: 5, tv_usec: 0)
-        #endif
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
 
         var buffer = Data()
@@ -291,10 +305,8 @@ public actor LocalHTTPStreamProxy {
         sliceSize: Int,
         lowWaterBuffer: Bool
     ) async throws {
-        if lowWaterBuffer {
-            var sndBuf: Int32 = 65536
-            setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndBuf, socklen_t(MemoryLayout<Int32>.size))
-        }
+        var sndBuf: Int32 = lowWaterBuffer ? 65536 : (512 * 1024)
+        setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndBuf, socklen_t(MemoryLayout<Int32>.size))
         var cursor = start
         while cursor <= end {
             if Task.isCancelled { return }
@@ -315,10 +327,6 @@ public actor LocalHTTPStreamProxy {
         }
         text += "\r\n"
         _ = sendAll(fd: fd, data: Data(text.utf8))
-    }
-
-    private nonisolated static func sendSimpleStatus(fd: Int32, code: Int, reason: String) async {
-        sendSimpleStatusSync(fd: fd, code: code, reason: reason)
     }
 
     private nonisolated static func sendSimpleStatusSync(fd: Int32, code: Int, reason: String) {
@@ -408,152 +416,99 @@ private final class POSIXLoopbackServer: @unchecked Sendable {
         }
 
         var boundAddr = sockaddr_in()
-        var len = socklen_t(MemoryLayout<sockaddr_in>.size)
-        _ = withUnsafeMutablePointer(to: &boundAddr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                getsockname(fd, $0, &len)
-            }
-        }
-        self.port = UInt16(bigEndian: boundAddr.sin_port)
-        self.listenFD = fd
-
-        acceptQueue.async { [weak self] in
-            while let self, !self.isStopped {
-                var clientAddr = sockaddr_in()
-                var clientLen = socklen_t(MemoryLayout<sockaddr_in>.size)
-                let clientFD = withUnsafeMutablePointer(to: &clientAddr) {
-                    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                        #if canImport(Darwin)
-                        return Darwin.accept(fd, $0, &clientLen)
-                        #else
-                        return Glibc.accept(fd, $0, &clientLen)
-                        #endif
-                    }
-                }
-                if clientFD < 0 {
-                    let err = errno
-                    if self.isStopped { break }
-                    if err == EINTR { continue }
-                    if err == EAGAIN || err == EWOULDBLOCK {
-                        usleep(10_000)
-                        continue
-                    }
-                    var shouldClose = false
-                    self.stateLock.lock()
-                    if !self.stopped {
-                        self.stopped = true
-                        shouldClose = true
-                    }
-                    self.stateLock.unlock()
-                    if shouldClose {
-                        Self.closeFD(fd)
-                    }
-                    break
-                }
-                #if canImport(Darwin)
-                var yes: Int32 = 1
-                setsockopt(clientFD, SOL_SOCKET, SO_NOSIGPIPE, &yes, socklen_t(MemoryLayout<Int32>.size))
-                #endif
-                onAccept(clientFD)
-            }
-        }
-    }
-
-    private var isStopped: Bool {
-        stateLock.lock()
-        defer { stateLock.unlock() }
-        return stopped
-    }
-
-    func isAlive() -> Bool {
-        guard !isStopped, listenFD >= 0, port > 0 else { return false }
-
-        var boundAddr = sockaddr_in()
-        var len = socklen_t(MemoryLayout<sockaddr_in>.size)
+        var addrLen = socklen_t(MemoryLayout<sockaddr_in>.size)
         let nameRes = withUnsafeMutablePointer(to: &boundAddr) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                getsockname(listenFD, $0, &len)
-            }
-        }
-        guard nameRes == 0, UInt16(bigEndian: boundAddr.sin_port) == port else {
-            return false
-        }
-
-        #if canImport(Darwin)
-        let probeFD = Darwin.socket(AF_INET, SOCK_STREAM, 0)
-        #else
-        let probeFD = Glibc.socket(AF_INET, Int32(SOCK_STREAM.rawValue), 0)
-        #endif
-        guard probeFD >= 0 else { return false }
-        defer { Self.closeFD(probeFD) }
-
-        #if canImport(Darwin)
-        var noSigPipe: Int32 = 1
-        setsockopt(probeFD, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
-        #endif
-
-        let flags = fcntl(probeFD, F_GETFL, 0)
-        if flags >= 0 {
-            _ = fcntl(probeFD, F_SETFL, flags | O_NONBLOCK)
-        }
-
-        var target = sockaddr_in()
-        target.sin_family = sa_family_t(AF_INET)
-        target.sin_port = port.bigEndian
-        target.sin_addr.s_addr = UInt32(0x7F000001).bigEndian
-
-        let connRes = withUnsafePointer(to: &target) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
                 #if canImport(Darwin)
-                return Darwin.connect(probeFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                return Darwin.getsockname(fd, $0, &addrLen)
                 #else
-                return Glibc.connect(probeFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                return Glibc.getsockname(fd, $0, &addrLen)
                 #endif
             }
         }
-        if connRes == 0 {
-            return true
-        }
-        guard errno == EINPROGRESS else {
-            return false
-        }
-
-        var pfd = pollfd(fd: probeFD, events: Int16(POLLOUT), revents: 0)
-        let pollRes = poll(&pfd, 1, 150)
-        guard pollRes > 0 else {
-            return false
+        guard nameRes == 0 else {
+            let err = errno
+            Self.closeFD(fd)
+            throw LocalHTTPStreamProxy.ProxyError.bindFailed(err)
         }
 
-        var soErr: Int32 = 0
-        var soErrLen = socklen_t(MemoryLayout<Int32>.size)
-        guard getsockopt(probeFD, SOL_SOCKET, SO_ERROR, &soErr, &soErrLen) == 0 else {
-            return false
+        self.listenFD = fd
+        self.port = UInt16(bigEndian: boundAddr.sin_port)
+
+        acceptQueue.async { [weak self] in
+            self?.acceptLoop(onAccept: onAccept)
         }
-        return soErr == 0
-    }
-
-    func stop() {
-        stateLock.lock()
-        guard !stopped else { stateLock.unlock(); return }
-        stopped = true
-        stateLock.unlock()
-        #if canImport(Darwin)
-        Darwin.shutdown(listenFD, SHUT_RDWR)
-        #else
-        Glibc.shutdown(listenFD, Int32(SHUT_RDWR))
-        #endif
-        Self.closeFD(listenFD)
-    }
-
-    static func closeFD(_ fd: Int32) {
-        #if canImport(Darwin)
-        Darwin.close(fd)
-        #else
-        Glibc.close(fd)
-        #endif
     }
 
     deinit {
         stop()
+    }
+
+    func isAlive() -> Bool {
+        stateLock.lock()
+        let isStopped = stopped
+        stateLock.unlock()
+        if isStopped { return false }
+        var errVal: Int32 = 0
+        var len = socklen_t(MemoryLayout<Int32>.size)
+        let rc = getsockopt(listenFD, SOL_SOCKET, SO_ERROR, &errVal, &len)
+        return rc == 0 && errVal == 0
+    }
+
+    func stop() {
+        stateLock.lock()
+        if stopped {
+            stateLock.unlock()
+            return
+        }
+        stopped = true
+        stateLock.unlock()
+        #if canImport(Darwin)
+        _ = Darwin.shutdown(listenFD, SHUT_RDWR)
+        #else
+        _ = Glibc.shutdown(listenFD, Int32(SHUT_RDWR))
+        #endif
+        Self.closeFD(listenFD)
+    }
+
+    private func acceptLoop(onAccept: @escaping @Sendable (Int32) -> Void) {
+        while true {
+            stateLock.lock()
+            let shouldStop = stopped
+            stateLock.unlock()
+            if shouldStop { break }
+
+            var clientAddr = sockaddr_in()
+            var clientLen = socklen_t(MemoryLayout<sockaddr_in>.size)
+            let clientFD = withUnsafeMutablePointer(to: &clientAddr) {
+                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    #if canImport(Darwin)
+                    return Darwin.accept(listenFD, $0, &clientLen)
+                    #else
+                    return Glibc.accept(listenFD, $0, &clientLen)
+                    #endif
+                }
+            }
+            if clientFD < 0 {
+                if errno == EINTR { continue }
+                break
+            }
+            #if canImport(Darwin)
+            var noSigPipe: Int32 = 1
+            setsockopt(clientFD, SOL_SOCKET, SO_NOSIGPIPE, &noSigPipe, socklen_t(MemoryLayout<Int32>.size))
+            var noDelay: Int32 = 1
+            setsockopt(clientFD, IPPROTO_TCP, TCP_NODELAY, &noDelay, socklen_t(MemoryLayout<Int32>.size))
+            #endif
+            onAccept(clientFD)
+        }
+    }
+
+    static func closeFD(_ fd: Int32) {
+        guard fd >= 0 else { return }
+        #if canImport(Darwin)
+        _ = Darwin.close(fd)
+        #else
+        _ = Glibc.close(fd)
+        #endif
     }
 }
