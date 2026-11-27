@@ -570,7 +570,7 @@ private struct DriveDirectoryPage: View {
                                 Image(uiImage: coverImg)
                                     .resizable()
                                     .scaledToFill()
-                                    .frame(maxWidth: .infinity, height: 154)
+                                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 154, maxHeight: 154)
                                     .clipped()
                                     .overlay(
                                         LinearGradient(colors: [.black.opacity(0.55), .clear, .black.opacity(0.45)], startPoint: .top, endPoint: .bottom)
