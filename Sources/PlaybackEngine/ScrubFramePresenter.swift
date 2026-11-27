@@ -57,10 +57,20 @@ public final class ScrubFramePresenter {
     fileprivate weak var canvasView: ScrubCanvasView?
     private var pendingContent: ScrubFrameContent?
     public private(set) var isVisible: Bool = false
+    public private(set) var isAcceptingFrames: Bool = false
 
     public init() {}
 
+    public func beginScrubSession() {
+        isAcceptingFrames = true
+    }
+
+    public func stopAcceptingFrames() {
+        isAcceptingFrames = false
+    }
+
     fileprivate func attach(_ view: ScrubCanvasView) {
+        guard canvasView !== view else { return }
         canvasView = view
         if let pendingContent, isVisible {
             view.present(pendingContent)
@@ -74,6 +84,7 @@ public final class ScrubFramePresenter {
     }
 
     public func present(_ content: ScrubFrameContent) {
+        guard isAcceptingFrames else { return }
         pendingContent = content
         isVisible = true
         canvasView?.present(content)
@@ -84,6 +95,7 @@ public final class ScrubFramePresenter {
     }
 
     public func clear() {
+        isAcceptingFrames = false
         pendingContent = nil
         isVisible = false
         canvasView?.clear()
@@ -164,6 +176,7 @@ final class ScrubCanvasView: UIView {
     }
 
     func clear() {
+        guard !isHidden || !displayLayer.isHidden || layer.contents != nil else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         layer.contents = nil

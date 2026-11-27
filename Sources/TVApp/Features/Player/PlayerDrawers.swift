@@ -176,7 +176,7 @@ public struct PlayerBottomSettingsPanel: View {
             let dec = coordinator.isHardwareDecode ? "硬解 HW" : "软解 SW"
             return "当前：\(coordinator.activeEngine.displayName) · \(dec) · \(String(format: "%.2gx", coordinator.currentPlaybackRate))"
         case .subtitles:
-            return "\(style.fontFamily.displayName) · \(Int(style.fontSize))pt · 距底 \(Int(style.bottomInset))px（上沿为底）"
+            return "\(style.fontFamily.displayName) · \(Int(style.fontSize))号 · 距底 \(Int(style.bottomInset))px（上沿为底）"
         case .audio:
             return "音轨 \(max(1, coordinator.audioTracks.count)) 条 · 统计 \(showTechStats ? "开" : "关")"
         }
@@ -359,13 +359,13 @@ public struct PlayerBottomSettingsPanel: View {
                             onInteraction()
                             style.fontSize = max(24, style.fontSize - 4)
                         }
-                        Text("\(Int(style.fontSize))pt")
-                            .font(.system(size: 19, weight: .bold, design: .monospaced))
-                            .foregroundStyle(.white)
-                            .frame(minWidth: 56)
+                        optionPill("\(Int(style.fontSize))号", selected: abs(style.fontSize - 66) < 0.5, tint: TVTokens.Color.accent) {
+                            onInteraction()
+                            style.fontSize = 66
+                        }
                         optionPill("A+", selected: false, tint: TVTokens.Color.accent) {
                             onInteraction()
-                            style.fontSize = min(76, style.fontSize + 4)
+                            style.fontSize = min(96, style.fontSize + 4)
                         }
                     }
                     .padding(.vertical, 4)

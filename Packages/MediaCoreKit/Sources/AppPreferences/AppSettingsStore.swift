@@ -25,10 +25,12 @@ public final class AppSettingsStore: @unchecked Sendable {
         defer { lock.unlock() }
         if let data = try? Data(contentsOf: fileURL),
            let settings = try? JSONDecoder().decode(AppSettings.self, from: data) {
+            persistMigratedIfNeeded(rawData: data, migrated: settings)
             return settings
         }
         if let data = UserDefaults.standard.data(forKey: defaultsKey),
            let settings = try? JSONDecoder().decode(AppSettings.self, from: data) {
+            persistMigratedIfNeeded(rawData: data, migrated: settings)
             return settings
         }
         return AppSettings()
@@ -41,5 +43,16 @@ public final class AppSettingsStore: @unchecked Sendable {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try data.write(to: fileURL, options: .atomic)
         UserDefaults.standard.set(data, forKey: defaultsKey)
+    }
+
+    private func persistMigratedIfNeeded(rawData: Data, migrated: AppSettings) {
+        let obj = try? JSONSerialization.jsonObject(with: rawData) as? [String: Any]
+        let savedVersion = obj?["subtitleDefaultsVersion"] as? Int
+        guard savedVersion != migrated.subtitleDefaultsVersion else { return }
+        if let updatedData = try? JSONEncoder().encode(migrated) {
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try? updatedData.write(to: fileURL, options: .atomic)
+            UserDefaults.standard.set(updatedData, forKey: defaultsKey)
+        }
     }
 }

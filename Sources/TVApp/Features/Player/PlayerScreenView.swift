@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import QuartzCore
+import AVFoundation
 import NetworkVFS
 import LocalStreamProxy
 import PlaybackKit
@@ -72,6 +73,10 @@ public struct PlayerScreenView: View {
     @State private var subtitleStyle = SubtitleStyleConfig()
     @State private var bottomDockHeight: CGFloat = 0
     @State private var didScheduleScrubWarmup = false
+    @State private var isCommittingScrub = false
+    @State private var scrubEpoch: UInt64 = 0
+    @State private var touchpadAccumulatedSeconds: Double = 0
+    @State private var lastPlayPauseWallTime: CFTimeInterval = 0
     @FocusState private var hudFocus: HUDFocusItem?
 
     public init(
@@ -126,7 +131,7 @@ public struct PlayerScreenView: View {
 
             if previewOpenHUD {
                 SubtitleOverlayView(
-                    cues: [SubtitleCue(start: 0, end: 99999, text: "不要温顺地走进那个良夜 —— 距底 \(Int(subtitleStyle.bottomInset))px（设置栏上沿即画面底边）")],
+                    cues: [SubtitleCue(start: 0, end: 99999, text: "不要温顺地走进那个良夜 · 楷体 66 号 距底 \(Int(subtitleStyle.bottomInset))px")],
                     currentTime: 100,
                     style: subtitleStyle,
                     virtualBottomFloor: subtitleVirtualBottomFloor
@@ -138,21 +143,29 @@ public struct PlayerScreenView: View {
                     style: subtitleStyle,
                     virtualBottomFloor: subtitleVirtualBottomFloor,
                     previewFallbackText: activeDrawer == .subtitles
-                        ? "字幕实时预览 · 距底部 \(Int(subtitleStyle.bottomInset))px（设置栏上沿即底边）"
+                        ? "\(subtitleStyle.fontFamily.displayName) \(Int(subtitleStyle.fontSize))号 · 距底 \(Int(subtitleStyle.bottomInset))px（设置栏上沿即底边）"
                         : nil
                 )
             }
 
-            if isRemoteCaptureActive {
-                RemoteCaptureRepresentable(
-                    isCaptureEnabled: true,
+            if !previewOpenHUD {
+                RemoteKeyCaptureView(
+                    isCaptureEnabled: isRemoteCaptureActive,
                     enableTouchpadScrub: env.settings.enableTouchpadScrub,
                     onShortPress: { forward in handleShortPress(forward: forward) },
                     onLongPressBegan: { forward in startScrub(forward: forward) },
                     onLongPressEnded: { endScrub() },
-                    onTouchpadPanBegan: { beginTouchpadScrub() },
-                    onTouchpadPanChanged: { delta in scrub.updateTouchpadPan(deltaFromOrigin: delta) },
-                    onTouchpadPanEnded: { endTouchpadScrub() },
+                    onTouchpadPanBegan: {
+                        touchpadAccumulatedSeconds = 0
+                        beginTouchpadScrub()
+                    },
+                    onTouchpadPanChanged: { dx, vel in
+                        handleTouchpadPanChanged(deltaPoints: dx, velocityPointsPerSec: vel)
+                    },
+                    onTouchpadPanEnded: {
+                        touchpadAccumulatedSeconds = 0
+                        endTouchpadScrub()
+                    },
                     onMenu: nil,
                     onPlayPause: {
                         if scrub.isScrubbing {
@@ -176,6 +189,8 @@ public struct PlayerScreenView: View {
                         bumpHUD()
                     }
                 )
+                .ignoresSafeArea()
+                .allowsHitTesting(isRemoteCaptureActive)
             }
 
             if coordinator.isBuffering && !scrub.isScrubbing && !previewOpenHUD {
@@ -370,6 +385,7 @@ public struct PlayerScreenView: View {
             subtitleStyle = env.settings.subtitleStyle
             if previewOpenHUD {
                 subtitleStyle.fontFamily = .kaiti
+                subtitleStyle.fontSize = 66
                 subtitleStyle.foregroundHex = "#FFD859"
                 subtitleStyle.bottomInset = 8
                 showHUD = true
@@ -379,6 +395,12 @@ public struct PlayerScreenView: View {
             }
             UIApplication.shared.isIdleTimerDisabled = true
             await startPlayback(for: entry, startAt: initialResumePosition)
+        }
+        .onChange(of: coordinator.isPlaying) { _, _ in
+            updateIdleTimer()
+        }
+        .onChange(of: scrub.isScrubbing) { _, _ in
+            updateIdleTimer()
         }
         .onChange(of: coordinator.currentTime) { _, newValue in
             if isFastPlaying {
@@ -734,9 +756,34 @@ public struct PlayerScreenView: View {
 
     // MARK: - 遥控器短按 & 硬件关键帧闭环同步快进
 
+    private func updateIdleTimer() {
+        guard !previewOpenHUD else { return }
+        UIApplication.shared.isIdleTimerDisabled = !didDismiss && (coordinator.isPlaying || scrub.isScrubbing || coordinator.isBuffering)
+    }
+
+    private func handleTouchpadPanChanged(deltaPoints: CGFloat, velocityPointsPerSec: CGFloat) {
+        guard scrub.isScrubbing else { return }
+        let absVel = abs(Double(velocityPointsPerSec))
+        let secPerPoint: Double
+        switch absVel {
+        case ..<280: secPerPoint = 0.14
+        case ..<800: secPerPoint = 0.48
+        default:     secPerPoint = 1.25
+        }
+        let dur = coordinator.duration
+        let durationScale: Double = (dur > 0 && dur < 300) ? max(0.25, dur / 300.0) : 1.0
+        touchpadAccumulatedSeconds += Double(deltaPoints) * secPerPoint * durationScale
+        scrub.updateTouchpadPan(deltaFromOrigin: touchpadAccumulatedSeconds)
+    }
+
     private func enterScrubStateIfNeeded() {
         guard !scrub.isScrubbing else { return }
-        wasPlayingBeforeScrub = coordinator.isPlaying
+        if !isCommittingScrub {
+            wasPlayingBeforeScrub = coordinator.isPlaying
+        }
+        isCommittingScrub = false
+        scrubEpoch &+= 1
+        scrubFramePresenter.beginScrubSession()
         scrubEngine.resetTracking()
         coordinator.pause()
         coordinator.setMuted(true)
@@ -747,11 +794,16 @@ public struct PlayerScreenView: View {
     }
 
     private func previewScrubFrame(at target: TimeInterval) async -> TimeInterval {
+        let epoch = scrubEpoch
         if scrubEngine.isReady {
             let outcome = await scrubEngine.decodePreviewFrame(
                 at: target,
                 requestedSpeed: max(1.0, scrub.requestedSpeed)
             )
+            // 严防过期预览帧覆盖正在播放的主视频层（导致“声音动、画面卡在预览帧”）
+            guard scrub.isScrubbing, !isCommittingScrub, scrubEpoch == epoch, !Task.isCancelled else {
+                return target
+            }
             switch outcome {
             case .frame(let preview):
                 scrubFramePresenter.present(preview)
@@ -762,15 +814,26 @@ public struct PlayerScreenView: View {
                 break
             }
         }
+        guard scrub.isScrubbing, !isCommittingScrub, scrubEpoch == epoch, !Task.isCancelled else {
+            return target
+        }
         return await coordinator.seekToKeyframePreview(at: target)
     }
 
     private func exitScrubStateAndSeek(to finalTarget: TimeInterval, accurate: Bool) async {
+        isCommittingScrub = true
+        let epoch = scrubEpoch
+        let shouldResume = wasPlayingBeforeScrub
+        scrubFramePresenter.stopAcceptingFrames()
         await streamCache?.setScrubMode(false)
         proxy?.setScrubMode(false)
-        await coordinator.seekAndWait(to: finalTarget, accurate: accurate, resumePlaying: wasPlayingBeforeScrub)
+        await coordinator.seekAndWait(to: finalTarget, accurate: accurate, resumePlaying: shouldResume)
         coordinator.setMuted(false)
-        scrubFramePresenter.clear()
+        try? await Task.sleep(nanoseconds: 90_000_000)
+        if scrubEpoch == epoch && !scrub.isScrubbing {
+            scrubFramePresenter.clear()
+            isCommittingScrub = false
+        }
     }
 
     private func handleShortPress(forward: Bool) {
@@ -868,6 +931,9 @@ public struct PlayerScreenView: View {
     // MARK: - HUD 与焦点控制
 
     private func togglePlayPause() {
+        let now = CACurrentMediaTime()
+        guard now - lastPlayPauseWallTime >= 0.25 else { return }
+        lastPlayPauseWallTime = now
         if coordinator.isPlaying { coordinator.pause() } else { coordinator.play() }
     }
 
@@ -1411,7 +1477,7 @@ private final class PlaybackSurfaceUIView: UIView {
         }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for sublayer in layer.sublayers ?? [] {
+        for sublayer in layer.sublayers ?? [] where sublayer is AVPlayerLayer {
             sublayer.frame = bounds
         }
         CATransaction.commit()
@@ -1439,46 +1505,6 @@ private struct PlaybackContainerView: UIViewRepresentable {
         case .avplayer:
             coordinator.avEngine.mount(into: uiView)
         }
-    }
-}
-
-private struct RemoteCaptureRepresentable: UIViewRepresentable {
-    let isCaptureEnabled: Bool
-    let enableTouchpadScrub: Bool
-    let onShortPress: (Bool) -> Void
-    let onLongPressBegan: (Bool) -> Void
-    let onLongPressEnded: () -> Void
-    let onTouchpadPanBegan: () -> Void
-    let onTouchpadPanChanged: (Double) -> Void
-    let onTouchpadPanEnded: () -> Void
-    let onMenu: (() -> Void)?
-    let onPlayPause: () -> Void
-    let onSelect: () -> Void
-    let onShowHUD: () -> Void
-
-    func makeUIView(context: Context) -> RemoteKeyCaptureView {
-        let view = RemoteKeyCaptureView()
-        configure(view)
-        return view
-    }
-
-    func updateUIView(_ uiView: RemoteKeyCaptureView, context: Context) {
-        uiView.isCaptureEnabled = isCaptureEnabled
-        configure(uiView)
-    }
-
-    private func configure(_ view: RemoteKeyCaptureView) {
-        view.enableTouchpadScrub = enableTouchpadScrub
-        view.onShortPress = onShortPress
-        view.onLongPressBegan = onLongPressBegan
-        view.onLongPressEnded = onLongPressEnded
-        view.onTouchpadPanBegan = onTouchpadPanBegan
-        view.onTouchpadPanChanged = onTouchpadPanChanged
-        view.onTouchpadPanEnded = onTouchpadPanEnded
-        view.onMenu = onMenu
-        view.onPlayPause = onPlayPause
-        view.onSelect = onSelect
-        view.onShowHUD = onShowHUD
     }
 }
 

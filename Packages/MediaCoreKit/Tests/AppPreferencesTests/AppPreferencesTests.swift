@@ -74,4 +74,24 @@ struct AppPreferencesTests {
         let decoded = try JSONDecoder().decode(AppSettings.self, from: data)
         #expect(decoded.enginePreference == .ksplayer)
     }
+
+    @Test("旧版 settings.json 一次性迁移为楷体 66 号距底 8px，且保留用户后续自定义")
+    func subtitleDefaultsOneTimeMigration() throws {
+        let legacyJSON = Data("{\"subtitleStyle\":{\"fontFamily\":\"system\",\"fontSize\":38,\"bottomInset\":56}}".utf8)
+        let migrated = try JSONDecoder().decode(AppSettings.self, from: legacyJSON)
+        #expect(migrated.subtitleDefaultsVersion == AppSettings.currentSubtitleDefaultsVersion)
+        #expect(migrated.subtitleStyle.fontFamily == .kaiti)
+        #expect(migrated.subtitleStyle.fontSize == 66)
+        #expect(migrated.subtitleStyle.bottomInset == 8)
+
+        var custom = migrated
+        custom.subtitleStyle.fontFamily = .songti
+        custom.subtitleStyle.fontSize = 52
+        custom.subtitleStyle.bottomInset = 24
+        let customData = try JSONEncoder().encode(custom)
+        let reloaded = try JSONDecoder().decode(AppSettings.self, from: customData)
+        #expect(reloaded.subtitleStyle.fontFamily == .songti)
+        #expect(reloaded.subtitleStyle.fontSize == 52)
+        #expect(reloaded.subtitleStyle.bottomInset == 24)
+    }
 }

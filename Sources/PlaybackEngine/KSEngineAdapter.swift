@@ -64,7 +64,9 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
     private var currentURLString: String = ""
     private var currentLoadOptions = EngineLoadOptions()
     private var isMutedState = false
-    private var desiredPlaying = true
+    private var userPaused = false
+    private var isSeeking = false
+    private var loadGeneration: UInt64 = 0
     private var didReportPrepared = false
 
     public override init() {
@@ -77,16 +79,19 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
         }
 
         shutdown()
+        loadGeneration &+= 1
+        let gen = loadGeneration
         currentURLString = url
         currentLoadOptions = options
         isHardwareDecodeEnabled = options.hardwareDecode
-        desiredPlaying = true
+        userPaused = false
+        isSeeking = false
         isPlaying = true
         isBuffering = true
         didReportPrepared = false
         pendingResumeSeekTime = startAt > 0.5 ? startAt : nil
 
-        let opts = makeOptions(options, autoPlay: pendingResumeSeekTime == nil)
+        let opts = makeOptions(options)
         self.activeOptions = opts
 
         let layer = KSPlayerLayer(url: mediaURL, options: opts, delegate: self)
@@ -97,7 +102,7 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
         loadTimeoutTask?.cancel()
         loadTimeoutTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 15_000_000_000)
-            guard let self, !Task.isCancelled, !self.didReportPrepared, self.playerLayer === layer else { return }
+            guard let self, !Task.isCancelled, self.loadGeneration == gen, !self.didReportPrepared, self.playerLayer === layer else { return }
             self.isBuffering = false
             self.onError?("KSPlayer 初始化超时，请重试或切换播放内核")
         }
@@ -106,20 +111,20 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
         prepareTask?.cancel()
         prepareTask = Task { @MainActor [weak self] in
             await Task.yield()
-            guard let self, !Task.isCancelled, self.playerLayer === layer else { return }
+            guard let self, !Task.isCancelled, self.loadGeneration == gen, self.playerLayer === layer else { return }
             layer.prepareToPlay()
         }
     }
 
-    private func makeOptions(_ options: EngineLoadOptions, autoPlay: Bool) -> CineDeckKSOptions {
+    private func makeOptions(_ options: EngineLoadOptions) -> CineDeckKSOptions {
         let opts = CineDeckKSOptions()
         opts.playerTypes = [KSMEPlayer.self, KSAVPlayer.self]
         opts.videoDecodeType = options.hardwareDecode ? .asynchronousHardware : .software
-        opts.isAutoPlay = autoPlay
+        opts.isAutoPlay = true
         opts.isSecondOpen = false
         opts.startPlayTime = 0
         opts.isAccurateSeek = false
-        opts.isSeekedAutoPlay = autoPlay
+        opts.isSeekedAutoPlay = true
         opts.seekUsePacketCache = true
         opts.seekInterruptIO = true
         opts.seekFlags = 1
@@ -139,14 +144,14 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
     }
 
     public func play() {
-        desiredPlaying = true
+        userPaused = false
         isPlaying = true
         playerLayer?.play()
         onStateChange?("正在播放")
     }
 
     public func pause() {
-        desiredPlaying = false
+        userPaused = true
         isPlaying = false
         playerLayer?.pause()
         onStateChange?("已暂停")
@@ -155,7 +160,7 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
     public func seek(to time: TimeInterval, accurate: Bool) {
         guard let layer = playerLayer else { return }
         let clamped = duration > 0 ? min(max(0, time), max(0, duration - 0.5)) : max(0, time)
-        let autoPlay = desiredPlaying
+        let autoPlay = !userPaused
         activeOptions?.isAccurateSeek = accurate
         activeOptions?.isSeekedAutoPlay = autoPlay
         layer.seek(time: clamped, autoPlay: autoPlay) { _ in }
@@ -165,19 +170,29 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
     public func seekAsync(to time: TimeInterval, accurate: Bool, autoPlay: Bool) async {
         guard let layer = playerLayer else { return }
         let clamped = duration > 0 ? min(max(0, time), max(0, duration - 0.5)) : max(0, time)
-        desiredPlaying = autoPlay
+        isSeeking = true
+        defer { isSeeking = false }
+        userPaused = !autoPlay
         activeOptions?.isAccurateSeek = accurate
         activeOptions?.isSeekedAutoPlay = autoPlay
         await performGuardedSeek(layer: layer, time: clamped, autoPlay: autoPlay, timeoutNs: 2_000_000_000)
-        if autoPlay && !layer.player.isPlaying {
+        guard self.playerLayer === layer else { return }
+        if autoPlay {
             layer.play()
+            isPlaying = true
+            onStateChange?("正在播放")
+        } else {
+            layer.pause()
+            isPlaying = false
+            onStateChange?("已暂停")
         }
-        isPlaying = autoPlay
         currentTime = clamped
     }
 
     public func seekToKeyframePreview(at time: TimeInterval) async -> TimeInterval {
         guard let layer = playerLayer else { return time }
+        isSeeking = true
+        defer { isSeeking = false }
         let clamped = duration > 0 ? min(max(0, time), max(0, duration - 0.5)) : max(0, time)
         activeOptions?.isAccurateSeek = false
         activeOptions?.isSeekedAutoPlay = false
@@ -307,22 +322,33 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
         container.subviews.forEach { $0.removeFromSuperview() }
         mountedView = nil
         guard let layerView = playerLayer?.makeUIView() else { return }
-        layerView.translatesAutoresizingMaskIntoConstraints = true
-        layerView.frame = container.bounds
-        layerView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        layerView.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(layerView)
+        NSLayoutConstraint.activate([
+            layerView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            layerView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            layerView.topAnchor.constraint(equalTo: container.topAnchor),
+            layerView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
         mountedView = layerView
+        playerLayer?.updateUIView(layerView)
     }
 
-    public func updateMountedView() {}
+    public func updateMountedView() {
+        if let mountedView {
+            playerLayer?.updateUIView(mountedView)
+        }
+    }
 
     public func shutdown() {
+        loadGeneration &+= 1
         prepareTask?.cancel()
         prepareTask = nil
         loadTimeoutTask?.cancel()
         loadTimeoutTask = nil
         pendingResumeSeekTime = nil
-        desiredPlaying = false
+        userPaused = false
+        isSeeking = false
         isPlaying = false
         isBuffering = false
         didReportPrepared = false
@@ -361,12 +387,17 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
 
     // MARK: - KSPlayerLayerDelegate
 
+    public func playerDidReplace(layer: KSPlayerLayer) {
+        guard layer === self.playerLayer else { return }
+        updateMountedView()
+    }
+
     public func player(layer: KSPlayerLayer, state: KSPlayerState) {
         guard layer === self.playerLayer else { return }
         switch state {
         case .buffering:
             isBuffering = true
-            isPlaying = desiredPlaying
+            isPlaying = !userPaused
             onStateChange?("缓冲中…")
         case .readyToPlay:
             loadTimeoutTask?.cancel()
@@ -377,6 +408,7 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
             layer.player.playbackRate = Float(currentLoadOptions.playbackRate)
             layer.player.isMuted = isMutedState
             refreshTracks()
+            updateMountedView()
             if let videoTrack = layer.player.tracks(mediaType: .video).first,
                let desc = videoTrack.formatDescription {
                 videoFormatDescription = desc
@@ -387,18 +419,20 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
             }
             if let resumeAt = pendingResumeSeekTime {
                 pendingResumeSeekTime = nil
+                let gen = loadGeneration
                 let target = duration > 0 ? min(max(0, resumeAt), max(0, duration - 0.5)) : max(0, resumeAt)
                 Task { @MainActor [weak self] in
-                    // 等 AVSampleBufferDisplayLayer 与解码管线就绪后再执行单飞关键帧定位，避免画面冻结在首帧
-                    try? await Task.sleep(nanoseconds: 80_000_000)
-                    guard let self, self.playerLayer === layer else { return }
-                    let wantPlay = self.desiredPlaying
+                    guard let self, self.loadGeneration == gen, self.playerLayer === layer else { return }
+                    self.isSeeking = true
+                    defer { self.isSeeking = false }
+                    let wantPlay = !self.userPaused
                     self.activeOptions?.isAccurateSeek = false
                     self.activeOptions?.isSeekedAutoPlay = wantPlay
                     await self.performGuardedSeek(layer: layer, time: target, autoPlay: wantPlay, timeoutNs: 2_500_000_000)
-                    guard self.playerLayer === layer else { return }
-                    if self.desiredPlaying {
-                        if !layer.player.isPlaying { layer.play() }
+                    guard self.loadGeneration == gen, self.playerLayer === layer else { return }
+                    self.updateMountedView()
+                    if !self.userPaused {
+                        layer.play()
                         self.isPlaying = true
                         self.onStateChange?("正在播放")
                     } else {
@@ -413,14 +447,14 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
                     }
                 }
             } else {
-                if desiredPlaying {
-                    if !layer.player.isPlaying { layer.play() }
-                    isPlaying = true
-                    onStateChange?("正在播放")
-                } else {
+                if userPaused {
                     layer.pause()
                     isPlaying = false
                     onStateChange?("已暂停")
+                } else {
+                    if !layer.player.isPlaying { layer.play() }
+                    isPlaying = true
+                    onStateChange?("正在播放")
                 }
                 if !didReportPrepared {
                     didReportPrepared = true
@@ -430,29 +464,31 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
             }
         case .bufferFinished:
             isBuffering = false
-            if desiredPlaying {
-                if !layer.player.isPlaying { layer.play() }
-                isPlaying = true
-                onStateChange?("正在播放")
-            } else {
+            if userPaused {
                 if layer.player.isPlaying { layer.pause() }
                 isPlaying = false
                 onStateChange?("已暂停")
+            } else {
+                isPlaying = true
+                onStateChange?("正在播放")
             }
         case .paused:
             isBuffering = false
-            if !desiredPlaying {
+            if userPaused {
+                isPlaying = false
+                onStateChange?("已暂停")
+            } else if didReportPrepared && !isSeeking && pendingResumeSeekTime == nil {
+                userPaused = true
                 isPlaying = false
                 onStateChange?("已暂停")
             }
         case .playedToTheEnd:
             isBuffering = false
-            desiredPlaying = false
+            userPaused = false
             isPlaying = false
             onStateChange?("播放完成")
         case .error:
             isBuffering = false
-            desiredPlaying = false
             isPlaying = false
             onStateChange?("播放异常")
         default:
@@ -473,7 +509,8 @@ public final class KSEngineAdapter: NSObject, PlayerEngine, KSPlayerLayerDelegat
         guard layer === self.playerLayer else { return }
         loadTimeoutTask?.cancel()
         loadTimeoutTask = nil
-        desiredPlaying = false
+        userPaused = false
+        isSeeking = false
         isPlaying = false
         isBuffering = false
         if let error {

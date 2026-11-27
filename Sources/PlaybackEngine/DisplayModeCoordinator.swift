@@ -10,6 +10,9 @@ public final class DisplayModeCoordinator {
 
     /// Retain an explicit Objective-C class reference in AVKit.framework so ld_prime never strips AVKit linkage.
     private static let retainedAVKitClass: AnyClass = AVDisplayManager.self
+    private var lastAppliedRate: Float = 0
+    private var lastAppliedFormatDesc: CMFormatDescription?
+    private var lastAppliedFallbackKey: String?
 
     private init() {}
 
@@ -28,10 +31,25 @@ public final class DisplayModeCoordinator {
         guard let manager = resolveManager() else { return }
         let rate: Float = (refreshRate.isFinite && refreshRate > 1) ? refreshRate : 60
         if let formatDescription {
+            if abs(rate - lastAppliedRate) < 0.05,
+               let prev = lastAppliedFormatDesc,
+               CMFormatDescriptionEqual(prev, otherFormatDescription: formatDescription) {
+                return
+            }
+            lastAppliedRate = rate
+            lastAppliedFormatDesc = formatDescription
+            lastAppliedFallbackKey = nil
             manager.preferredDisplayCriteria = AVDisplayCriteria(refreshRate: rate, formatDescription: formatDescription)
             return
         }
         guard width > 0, height > 0 else { return }
+        let key = "\(Int((rate * 100).rounded()))-\(width)x\(height)-\(isHEVC)"
+        if key == lastAppliedFallbackKey {
+            return
+        }
+        lastAppliedRate = rate
+        lastAppliedFormatDesc = nil
+        lastAppliedFallbackKey = key
         // FSPlayer 路径下构造有效视频格式描述以触发 Match Frame Rate（不强改 SDR/HDR，以免误切）
         var desc: CMVideoFormatDescription?
         let codec: CMVideoCodecType = isHEVC ? kCMVideoCodecType_HEVC : kCMVideoCodecType_H264
@@ -49,6 +67,9 @@ public final class DisplayModeCoordinator {
     }
 
     public func reset() {
+        lastAppliedRate = 0
+        lastAppliedFormatDesc = nil
+        lastAppliedFallbackKey = nil
         resolveManager()?.preferredDisplayCriteria = nil
     }
 }

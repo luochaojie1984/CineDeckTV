@@ -58,8 +58,9 @@ struct SubtitleKitTests {
         let legacyDecoded = try JSONDecoder().decode(SubtitleStyleConfig.self, from: legacy)
         #expect(legacyDecoded.fontSize == 42)
         #expect(legacyDecoded.foregroundHex == "#FFD859")
-        #expect(legacyDecoded.fontFamily == .system)
+        #expect(legacyDecoded.fontFamily == .kaiti)
         #expect(legacyDecoded.backgroundOpacity == 0.32)
+        #expect(legacyDecoded.bottomInset == 8)
     }
 
     @Test("7 款中文字体（含楷体/宋体/仿宋/圆体/电影艺术黑）与 10 种配色及旧版 rawValue 兼容")
@@ -82,13 +83,17 @@ struct SubtitleKitTests {
         #expect(decodedMono.fontFamily == .system)
     }
 
-    @Test("字幕默认底距为 8px 且缺失字段兼容解码为 8px")
-    func defaultBottomInsetIs8() throws {
+    @Test("字幕默认为经典楷体 66 号、距底 8px 且缺失字段兼容解码为新默认值")
+    func defaultKaiti66And8px() throws {
         let style = SubtitleStyleConfig()
+        #expect(style.fontFamily == .kaiti)
+        #expect(style.fontSize == 66)
         #expect(style.bottomInset == 8)
 
-        let legacy = Data("{\"fontSize\": 38}".utf8)
-        let decoded = try JSONDecoder().decode(SubtitleStyleConfig.self, from: legacy)
+        let empty = Data("{}".utf8)
+        let decoded = try JSONDecoder().decode(SubtitleStyleConfig.self, from: empty)
+        #expect(decoded.fontFamily == .kaiti)
+        #expect(decoded.fontSize == 66)
         #expect(decoded.bottomInset == 8)
     }
 }

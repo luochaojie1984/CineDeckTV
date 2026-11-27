@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleShortVersionString</key>
-    <string>0.4.2</string>
+    <string>0.4.3</string>
     <key>CFBundleVersion</key>
-    <string>8</string>
+    <string>9</string>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>

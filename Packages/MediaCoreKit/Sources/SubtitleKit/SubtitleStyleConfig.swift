@@ -121,8 +121,8 @@ public struct SubtitleStyleConfig: Codable, Sendable, Equatable {
     public var forceCustomStyle: Bool
 
     public init(
-        fontFamily: FontFamily = .system,
-        fontSize: Double = 38,
+        fontFamily: FontFamily = .kaiti,
+        fontSize: Double = 66,
         foregroundHex: String = "#FFFFFF",
         outlineHex: String = "#000000",
         outlineWidth: Double = 2.0,
@@ -146,8 +146,8 @@ public struct SubtitleStyleConfig: Codable, Sendable, Equatable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        fontFamily = try c.decodeIfPresent(FontFamily.self, forKey: .fontFamily) ?? .system
-        fontSize = try c.decodeIfPresent(Double.self, forKey: .fontSize) ?? 38
+        fontFamily = try c.decodeIfPresent(FontFamily.self, forKey: .fontFamily) ?? .kaiti
+        fontSize = try c.decodeIfPresent(Double.self, forKey: .fontSize) ?? 66
         foregroundHex = try c.decodeIfPresent(String.self, forKey: .foregroundHex) ?? "#FFFFFF"
         outlineHex = try c.decodeIfPresent(String.self, forKey: .outlineHex) ?? "#000000"
         outlineWidth = try c.decodeIfPresent(Double.self, forKey: .outlineWidth) ?? 2.0
