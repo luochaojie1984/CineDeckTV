@@ -69,10 +69,12 @@ public final class SubtitleFontRegistry: @unchecked Sendable {
             }
         }
 
+        let finalMap = map
+        let finalDir = detectedDir
         lock.withLock { state in
             state.didRegister = true
-            state.postScriptByFile = map
-            state.fontsDirectoryPath = detectedDir
+            state.postScriptByFile = finalMap
+            state.fontsDirectoryPath = finalDir
         }
     }
 
