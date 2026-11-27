@@ -43,6 +43,8 @@ targets:
         product: AppPreferences
       - package: MediaCoreKit
         product: PlaybackKit
+      - package: MediaCoreKit
+        product: MetadataKit
       # 二进制 XCFramework：禁止 embed: true（默认主力内核 KSPlayer + 保留 FSPlayer）
       - package: KSPlayer
         product: KSPlayer
@@ -59,8 +61,8 @@ targets:
       path: Sources/TVApp/Info.plist
       properties:
         CFBundleDisplayName: CineDeckTV
-        CFBundleShortVersionString: "0.4.5"
-        CFBundleVersion: "11"
+        CFBundleShortVersionString: "0.5.0"
+        CFBundleVersion: "12"
         NSLocalNetworkUsageDescription: "用于发现并访问局域网内的 SMB / WebDAV 影音服务器"
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true

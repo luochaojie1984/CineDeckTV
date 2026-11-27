@@ -94,4 +94,20 @@ struct AppPreferencesTests {
         #expect(reloaded.subtitleStyle.fontSize == 52)
         #expect(reloaded.subtitleStyle.bottomInset == 24)
     }
+
+    @Test("刮削详情展示默认关闭且兼容旧版 settings.json")
+    func metadataDisplayDefaultOff() throws {
+        var settings = AppSettings()
+        #expect(settings.enableMetadataDisplay == false)
+
+        let legacy = Data("{}".utf8)
+        let decodedLegacy = try JSONDecoder().decode(AppSettings.self, from: legacy)
+        #expect(decodedLegacy.enableMetadataDisplay == false)
+
+        settings.enableMetadataDisplay = true
+        let encoded = try JSONEncoder().encode(settings)
+        let decoded = try JSONDecoder().decode(AppSettings.self, from: encoded)
+        #expect(decoded.enableMetadataDisplay == true)
+    }
 }
+

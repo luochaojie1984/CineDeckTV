@@ -191,7 +191,7 @@ struct RootView: View {
         switch scenario {
         case .home:
             selectedTab = .home
-        case .browserGrid, .browserList:
+        case .browserGrid, .browserList, .browserScraped:
             selectedSource = env.sources.first
             selectedTab = .browser
         case .sources:

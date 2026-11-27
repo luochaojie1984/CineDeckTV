@@ -46,7 +46,11 @@ public struct HomeSpotlightView: View {
 
     private var sourcesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            sectionHeader("局域网片源", subtitle: "SMB2/3 常驻预读句柄与 WebDAV 高速流媒体", icon: "externaldrive.connected.to.line.below.fill", tint: TVTokens.Color.accent)
+            HStack(alignment: .center, spacing: 16) {
+                sectionHeader("局域网片源", subtitle: "SMB2/3 常驻预读句柄与 WebDAV 高速流媒体", icon: "externaldrive.connected.to.line.below.fill", tint: TVTokens.Color.accent)
+                Spacer()
+                metadataToggleButton
+            }
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: TVTokens.Spacing.gridSpacing), count: 3), spacing: TVTokens.Spacing.gridSpacing) {
                 ForEach(env.sources) { source in
@@ -131,6 +135,30 @@ public struct HomeSpotlightView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
         }
+    }
+
+
+    private var metadataToggleButton: some View {
+        let enabled = env.settings.enableMetadataDisplay
+        return Button {
+            var copy = env.settings
+            copy.enableMetadataDisplay.toggle()
+            env.update(settings: copy)
+        } label: {
+            Label(
+                enabled ? "刮削详情：已开启（仅目录内）" : "刮削详情：已关闭",
+                systemImage: enabled ? "sparkles.rectangle.stack.fill" : "sparkles.rectangle.stack"
+            )
+            .font(.system(size: 18, weight: .bold))
+            .lineLimit(1)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 10)
+        }
+        .buttonStyle(TVPlayerOptionButtonStyle(
+            isSelected: enabled,
+            accentTint: enabled ? TVTokens.Color.amber : TVTokens.Color.accent,
+            cornerRadius: 999
+        ))
     }
 
     private var bonjourSection: some View {

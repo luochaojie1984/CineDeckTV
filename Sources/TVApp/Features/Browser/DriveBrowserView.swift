@@ -1,5 +1,7 @@
 import SwiftUI
+import UIKit
 import NetworkVFS
+import MetadataKit
 import AppPreferences
 
 /// SMB / WebDAV 共享浏览器：
@@ -110,6 +112,8 @@ private struct DriveDirectoryPage: View {
     @State private var entries: [VFSEntry] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @StateObject private var metadataLoader = DirectoryMetadataLoader()
+    @State private var selectedDetailVideo: VFSEntry?
 
     /// 严格仅展示「文件夹」与「可播放视频」，自动隐藏字幕文件与不支持播放的杂项文件。
     private var visibleEntries: [VFSEntry] {
@@ -127,7 +131,18 @@ private struct DriveDirectoryPage: View {
     private var effectiveIsGrid: Bool {
         if env.previewScenario == .browserGrid { return true }
         if env.previewScenario == .browserList { return false }
+        if env.previewScenario == .browserScraped { return false }
         return storedIsGrid
+    }
+
+    private var effectiveMetadataEnabled: Bool {
+        if env.previewScenario == .browserScraped { return true }
+        if env.previewScenario == .browserList || env.previewScenario == .browserGrid { return false }
+        return env.settings.enableMetadataDisplay
+    }
+
+    private var metadataLoadTrigger: String {
+        "\(source?.id.uuidString ?? "none")::\(currentPath)::\(effectiveMetadataEnabled)::\(entries.count)"
     }
 
     private var isAtRoot: Bool {
@@ -175,6 +190,31 @@ private struct DriveDirectoryPage: View {
         .padding(.bottom, 24)
         .task(id: "\(source?.id.uuidString ?? "none")::\(currentPath)") {
             await loadDirectory()
+        }
+        .task(id: metadataLoadTrigger) {
+            guard effectiveMetadataEnabled, let source, !entries.isEmpty else {
+                metadataLoader.clearAndCancel()
+                return
+            }
+            metadataLoader.load(entries: entries, source: source, directoryPath: currentPath, env: env)
+        }
+        .onDisappear {
+            metadataLoader.cancelInFlight()
+        }
+        .fullScreenCover(item: $selectedDetailVideo) { videoEntry in
+            if let source {
+                VideoDetailSheetView(
+                    source: source,
+                    initialVideo: videoEntry,
+                    siblingVersions: siblingVersions(for: videoEntry),
+                    loader: metadataLoader,
+                    onPlay: { chosenVideo in
+                        metadataLoader.cancelInFlight()
+                        onPlay(source, chosenVideo)
+                    }
+                )
+                .environmentObject(env)
+            }
         }
     }
 
@@ -264,6 +304,26 @@ private struct DriveDirectoryPage: View {
                 }
 
                 Button {
+                    var copy = env.settings
+                    copy.enableMetadataDisplay.toggle()
+                    env.update(settings: copy)
+                } label: {
+                    Label(
+                        effectiveMetadataEnabled ? "刮削详情：开" : "刮削详情：关",
+                        systemImage: effectiveMetadataEnabled ? "sparkles.rectangle.stack.fill" : "sparkles.rectangle.stack"
+                    )
+                    .font(TVTokens.Typography.button)
+                    .lineLimit(1)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(TVPlayerOptionButtonStyle(
+                    isSelected: effectiveMetadataEnabled,
+                    accentTint: effectiveMetadataEnabled ? TVTokens.Color.amber : TVTokens.Color.accent,
+                    cornerRadius: 16
+                ))
+
+                Button {
                     withAnimation(TVTokens.Motion.panel) {
                         storedIsGrid.toggle()
                     }
@@ -319,11 +379,27 @@ private struct DriveDirectoryPage: View {
 
             ForEach(items) { entry in
                 let theme = TVMediaTheme.palette(forTitle: entry.name, isDirectory: entry.isDirectory, isSubtitle: false)
+                let match = effectiveMetadataEnabled ? metadataLoader.matchesByPath[entry.path] : nil
+                let meta = effectiveMetadataEnabled ? metadataLoader.metadataByPath[entry.path] : nil
+                let dup = effectiveMetadataEnabled ? metadataLoader.duplicateMap[entry.path] : nil
+                let coverImg = effectiveMetadataEnabled ? metadataLoader.thumbnail(for: entry.path) : nil
+                let hasRichCard = effectiveMetadataEnabled && !entry.isDirectory && (meta != nil || coverImg != nil)
 
                 Button {
-                        open(entry, source: source)
-                    } label: {
-                        HStack(spacing: 18) {
+                    open(entry, source: source, hasRichCard: hasRichCard)
+                } label: {
+                    HStack(spacing: 18) {
+                        if let coverImg, effectiveMetadataEnabled, !entry.isDirectory {
+                            Image(uiImage: coverImg)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 146, height: 86)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(.white.opacity(0.24), lineWidth: 1)
+                                )
+                        } else {
                             Image(systemName: theme.symbol)
                                 .font(.system(size: 26, weight: .semibold))
                                 .frame(width: 56, height: 56)
@@ -340,8 +416,63 @@ private struct DriveDirectoryPage: View {
                                         .strokeBorder(theme.primary.opacity(0.48), lineWidth: 1)
                                 )
                                 .foregroundStyle(.white)
+                        }
 
-                            VStack(alignment: .leading, spacing: 5) {
+                        VStack(alignment: .leading, spacing: 5) {
+                            if hasRichCard {
+                                HStack(spacing: 10) {
+                                    if let code = meta?.code, !code.isEmpty {
+                                        Text(code)
+                                            .font(.system(size: 15, weight: .heavy, design: .monospaced))
+                                            .padding(.horizontal, 9)
+                                            .padding(.vertical, 3)
+                                            .background(TVTokens.Color.amber.opacity(0.25), in: Capsule())
+                                            .foregroundStyle(TVTokens.Color.amber)
+                                    }
+                                    if let dup, dup.total >= 2 {
+                                        Text("同番号 \(dup.index)/\(dup.total)")
+                                            .font(.system(size: 15, weight: .heavy))
+                                            .padding(.horizontal, 9)
+                                            .padding(.vertical, 3)
+                                            .background(TVTokens.Color.coral.opacity(0.28), in: Capsule())
+                                            .foregroundStyle(TVTokens.Color.coral)
+                                    }
+                                    Text(meta?.title ?? TVTitleFormatter.cleanDisplayTitle(entry.name))
+                                        .font(TVTokens.Typography.listPrimary)
+                                        .lineLimit(1)
+                                }
+
+                                HStack(spacing: 10) {
+                                    if let actors = meta?.actors, !actors.isEmpty {
+                                        Text(actors.prefix(3).joined(separator: " · "))
+                                            .foregroundStyle(.white.opacity(0.88))
+                                            .lineLimit(1)
+                                    }
+                                    if let year = meta?.year {
+                                        Text("· \(String(year))")
+                                    }
+                                    if let studio = meta?.studio {
+                                        Text("· \(studio)")
+                                            .lineLimit(1)
+                                    }
+                                }
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundStyle(TVTokens.Color.secondaryText)
+
+                                HStack(spacing: 10) {
+                                    Text(formatSize(entry.size))
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(theme.primary)
+                                    if let vtags = match?.versionTags, !vtags.isEmpty {
+                                        Text("· \(vtags.prefix(4).joined(separator: " / "))")
+                                    }
+                                    Text("· 文件: \(entry.name)")
+                                        .foregroundStyle(TVTokens.Color.tertiaryText)
+                                        .lineLimit(1)
+                                }
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(TVTokens.Color.secondaryText)
+                            } else {
                                 Text(entry.isDirectory ? entry.name : TVTitleFormatter.cleanDisplayTitle(entry.name))
                                     .font(TVTokens.Typography.listPrimary)
                                     .lineLimit(1)
@@ -377,29 +508,39 @@ private struct DriveDirectoryPage: View {
                                     .foregroundStyle(TVTokens.Color.secondaryText)
                                 }
                             }
-
-                            Spacer(minLength: 16)
-
-                            if entry.isVideo {
-                                VideoBadgeRow(entry.badges, maxCount: 4)
-                            } else {
-                                Text("目录")
-                                    .font(.system(size: 15, weight: .bold))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 5)
-                                    .background(theme.primary.opacity(0.18), in: Capsule())
-                                    .foregroundStyle(theme.primary)
-                            }
-
-                            Image(systemName: entry.isDirectory ? "chevron.right" : "play.circle.fill")
-                                .font(.system(size: entry.isDirectory ? 20 : 26, weight: .bold))
-                                .foregroundStyle(entry.isDirectory ? TVTokens.Color.secondaryText : theme.primary)
                         }
-                        .padding(.leading, 22)
-                        .padding(.trailing, 22)
-                        .padding(.vertical, 14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Spacer(minLength: 16)
+
+                        if entry.isVideo {
+                            if hasRichCard, let subs = match?.subtitleCount, subs > 0 {
+                                Text("字幕 \(subs)")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(TVTokens.Color.emerald.opacity(0.18), in: Capsule())
+                                    .foregroundStyle(TVTokens.Color.emerald)
+                            } else {
+                                VideoBadgeRow(entry.badges, maxCount: 4)
+                            }
+                        } else {
+                            Text("目录")
+                                .font(.system(size: 15, weight: .bold))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 5)
+                                .background(theme.primary.opacity(0.18), in: Capsule())
+                                .foregroundStyle(theme.primary)
+                        }
+
+                        Image(systemName: entry.isDirectory ? "chevron.right" : (hasRichCard ? "info.circle.fill" : "play.circle.fill"))
+                            .font(.system(size: entry.isDirectory ? 20 : 26, weight: .bold))
+                            .foregroundStyle(entry.isDirectory ? TVTokens.Color.secondaryText : theme.primary)
                     }
+                    .padding(.leading, 22)
+                    .padding(.trailing, 22)
+                    .padding(.vertical, 14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 .buttonStyle(TVListRowButtonStyle(accentTint: theme.primary))
             }
         }
@@ -414,30 +555,64 @@ private struct DriveDirectoryPage: View {
         ) {
             ForEach(visibleEntries) { entry in
                 let theme = TVMediaTheme.palette(forTitle: entry.name, isDirectory: entry.isDirectory, isSubtitle: false)
+                let match = effectiveMetadataEnabled ? metadataLoader.matchesByPath[entry.path] : nil
+                let meta = effectiveMetadataEnabled ? metadataLoader.metadataByPath[entry.path] : nil
+                let dup = effectiveMetadataEnabled ? metadataLoader.duplicateMap[entry.path] : nil
+                let coverImg = effectiveMetadataEnabled ? metadataLoader.thumbnail(for: entry.path) : nil
+                let hasRichCard = effectiveMetadataEnabled && !entry.isDirectory && (meta != nil || coverImg != nil)
+
                 Button {
-                    open(entry, source: source)
+                    open(entry, source: source, hasRichCard: hasRichCard)
                 } label: {
                     VStack(alignment: .leading, spacing: 0) {
                         ZStack(alignment: .topLeading) {
-                            LinearGradient(
-                                colors: [theme.primary.opacity(0.32), theme.secondary.opacity(0.20), Color.black.opacity(0.14)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                            HStack(alignment: .top, spacing: 12) {
-                                Image(systemName: theme.symbol)
-                                    .font(.system(size: 30, weight: .semibold))
-                                    .frame(width: 58, height: 58)
-                                    .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                            if let coverImg, effectiveMetadataEnabled, !entry.isDirectory {
+                                Image(uiImage: coverImg)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(maxWidth: .infinity, height: 154)
+                                    .clipped()
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 15, style: .continuous)
-                                            .strokeBorder(.white.opacity(0.24), lineWidth: 1)
+                                        LinearGradient(colors: [.black.opacity(0.55), .clear, .black.opacity(0.45)], startPoint: .top, endPoint: .bottom)
                                     )
-                                    .foregroundStyle(.white)
+                            } else {
+                                LinearGradient(
+                                    colors: [theme.primary.opacity(0.32), theme.secondary.opacity(0.20), Color.black.opacity(0.14)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            }
+
+                            HStack(alignment: .top, spacing: 10) {
+                                if coverImg == nil || entry.isDirectory || !effectiveMetadataEnabled {
+                                    Image(systemName: theme.symbol)
+                                        .font(.system(size: 30, weight: .semibold))
+                                        .frame(width: 58, height: 58)
+                                        .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                                .strokeBorder(.white.opacity(0.24), lineWidth: 1)
+                                        )
+                                        .foregroundStyle(.white)
+                                } else if let code = meta?.code, !code.isEmpty {
+                                    Text(code)
+                                        .font(.system(size: 15, weight: .heavy, design: .monospaced))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(Color.black.opacity(0.62), in: Capsule())
+                                        .foregroundStyle(TVTokens.Color.amber)
+                                }
 
                                 Spacer(minLength: 8)
 
-                                if entry.isVideo {
+                                if let dup, dup.total >= 2, effectiveMetadataEnabled {
+                                    Text("同番号 \(dup.index)/\(dup.total)")
+                                        .font(.system(size: 14, weight: .heavy))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(TVTokens.Color.coral.opacity(0.85), in: Capsule())
+                                        .foregroundStyle(.white)
+                                } else if entry.isVideo {
                                     VideoBadgeRow(entry.badges, maxCount: 3)
                                 } else {
                                     Text(theme.tag)
@@ -448,15 +623,22 @@ private struct DriveDirectoryPage: View {
                                         .foregroundStyle(.white.opacity(0.92))
                                 }
                             }
-                            .padding(16)
+                            .padding(14)
                         }
-                        .frame(height: 94)
+                        .frame(height: effectiveMetadataEnabled ? 154 : 94)
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(entry.isDirectory ? entry.name : TVTitleFormatter.cleanDisplayTitle(entry.name))
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(hasRichCard ? (meta?.title ?? TVTitleFormatter.cleanDisplayTitle(entry.name)) : (entry.isDirectory ? entry.name : TVTitleFormatter.cleanDisplayTitle(entry.name)))
                                 .font(TVTokens.Typography.gridPrimary)
                                 .lineLimit(2)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                            if hasRichCard, let actors = meta?.actors, !actors.isEmpty {
+                                Text(actors.prefix(2).joined(separator: " · "))
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundStyle(TVTokens.Color.accent)
+                                    .lineLimit(1)
+                            }
 
                             Spacer(minLength: 2)
 
@@ -494,7 +676,7 @@ private struct DriveDirectoryPage: View {
                         .padding(.vertical, 14)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                     }
-                    .frame(height: TVTokens.Size.gridCardHeight)
+                    .frame(height: effectiveMetadataEnabled ? 306 : TVTokens.Size.gridCardHeight)
                 }
                 .buttonStyle(TVCardButtonStyle(focusedScale: 1.0, accentTint: theme.primary))
             }
@@ -571,12 +753,38 @@ private struct DriveDirectoryPage: View {
         .tvGlassSurface(cornerRadius: TVTokens.Radius.panel)
     }
 
-    private func open(_ entry: VFSEntry, source: MediaSourceConfig) {
+    private func open(_ entry: VFSEntry, source: MediaSourceConfig, hasRichCard: Bool = false) {
         if entry.isDirectory {
+            metadataLoader.cancelInFlight()
             navPath.append(entry.path)
         } else if entry.isVideo {
-            onPlay(source, entry)
+            if hasRichCard && effectiveMetadataEnabled {
+                selectedDetailVideo = entry
+            } else {
+                metadataLoader.cancelInFlight()
+                onPlay(source, entry)
+            }
         }
+    }
+
+    private func siblingVersions(for video: VFSEntry) -> [VFSEntry] {
+        guard let code = metadataLoader.metadataByPath[video.path]?.code?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased(),
+            !code.isEmpty else {
+            return [video]
+        }
+        let matching = visibleEntries.filter { item in
+            guard item.isVideo,
+                  let otherCode = metadataLoader.metadataByPath[item.path]?.code?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .uppercased() else {
+                return false
+            }
+            return otherCode == code
+        }
+        guard matching.count >= 2 else { return [video] }
+        return matching.sorted { $0.size > $1.size }
     }
 
     private func loadDirectory() async {

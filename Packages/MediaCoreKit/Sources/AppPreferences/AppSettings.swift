@@ -97,6 +97,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var enableTouchpadScrub: Bool
     public var enableResumePlayback: Bool
     public var scrubBarColorHex: String
+    /// 默认关闭；开启后仅在进入共享盘视频目录时展示 `.nfo` 与封面刮削详情，首页保持纯净。
+    public var enableMetadataDisplay: Bool
 
     public static let currentSubtitleDefaultsVersion = 2
 
@@ -153,6 +155,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         enableTouchpadScrub: Bool = true,
         enableResumePlayback: Bool = true,
         scrubBarColorHex: String = ScrubBarColorPreset.skyBlue.rawValue,
+        enableMetadataDisplay: Bool = false,
         subtitleStyle: SubtitleStyleConfig = SubtitleStyleConfig(),
         subtitleDefaultsVersion: Int = AppSettings.currentSubtitleDefaultsVersion,
         lastVisitedPaths: [String: String] = [:]
@@ -173,6 +176,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         self.enableTouchpadScrub = enableTouchpadScrub
         self.enableResumePlayback = enableResumePlayback
         self.scrubBarColorHex = scrubBarColorHex
+        self.enableMetadataDisplay = enableMetadataDisplay
         self.subtitleStyle = subtitleStyle
         self.subtitleDefaultsVersion = subtitleDefaultsVersion
         self.lastVisitedPaths = lastVisitedPaths
@@ -196,6 +200,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         enableTouchpadScrub = try c.decodeIfPresent(Bool.self, forKey: .enableTouchpadScrub) ?? true
         enableResumePlayback = try c.decodeIfPresent(Bool.self, forKey: .enableResumePlayback) ?? true
         scrubBarColorHex = try c.decodeIfPresent(String.self, forKey: .scrubBarColorHex) ?? ScrubBarColorPreset.skyBlue.rawValue
+        enableMetadataDisplay = try c.decodeIfPresent(Bool.self, forKey: .enableMetadataDisplay) ?? false
         let savedSubtitleVersion = try c.decodeIfPresent(Int.self, forKey: .subtitleDefaultsVersion) ?? 1
         var decodedSubtitleStyle = try c.decodeIfPresent(SubtitleStyleConfig.self, forKey: .subtitleStyle) ?? SubtitleStyleConfig()
         if savedSubtitleVersion < Self.currentSubtitleDefaultsVersion {

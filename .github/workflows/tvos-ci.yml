@@ -2,7 +2,7 @@ name: CineDeckTV CI (Ubuntu Tests + tvOS Unsigned IPA + Simulator Previews)
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, 'feat/*' ]
   workflow_dispatch:
 
 concurrency:
@@ -72,20 +72,20 @@ jobs:
           ls -la "$APP/Frameworks"
       - name: Package unsigned IPA
         run: |
-          rm -rf Payload CineDeckTV-Unsigned.ipa
+          rm -rf Payload CineDeckTV-v0.5.0-Scraper-Unsigned.ipa
           mkdir -p Payload
           cp -R "build/Release-appletvos/CineDeckTV.app" Payload/
-          zip -qry "CineDeckTV-Unsigned.ipa" Payload
+          zip -qry "CineDeckTV-v0.5.0-Scraper-Unsigned.ipa" Payload
           rm -rf Payload
-          ls -lh CineDeckTV-Unsigned.ipa
-          sha256sum CineDeckTV-Unsigned.ipa | tee CineDeckTV-Unsigned.ipa.sha256
+          ls -lh CineDeckTV-v0.5.0-Scraper-Unsigned.ipa
+          sha256sum CineDeckTV-v0.5.0-Scraper-Unsigned.ipa | tee CineDeckTV-v0.5.0-Scraper-Unsigned.ipa.sha256
       - name: Upload IPA + checksum
         uses: actions/upload-artifact@v4
         with:
-          name: CineDeckTV-Unsigned-tvOS-IPA
+          name: CineDeckTV-v0.5.0-Scraper-IPA
           path: |
-            CineDeckTV-Unsigned.ipa
-            CineDeckTV-Unsigned.ipa.sha256
+            CineDeckTV-v0.5.0-Scraper-Unsigned.ipa
+            CineDeckTV-v0.5.0-Scraper-Unsigned.ipa.sha256
           retention-days: 30
 
   preview-tvos-screenshots:
@@ -123,7 +123,7 @@ jobs:
           APP="sim-build/Debug-appletvsimulator/CineDeckTV.app"
           xcrun simctl install "$UDID" "$APP"
           mkdir -p screenshots
-          for screen in home browser-grid browser-list sources player-hud settings; do
+          for screen in home browser-grid browser-list browser-scraped sources player-hud settings; do
             xcrun simctl terminate "$UDID" local.personal.cinedecktv || true
             SIMCTL_CHILD_CINEDECK_PREVIEW_SCREEN="$screen" xcrun simctl launch "$UDID" local.personal.cinedecktv "--preview-screen=$screen"
             sleep 4

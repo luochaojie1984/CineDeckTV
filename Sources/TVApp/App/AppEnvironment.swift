@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import NetworkVFS
 import AppPreferences
 import PlaybackKit
@@ -8,6 +9,7 @@ public enum PreviewScenario: String, Sendable {
     case home = "home"
     case browserGrid = "browser-grid"
     case browserList = "browser-list"
+    case browserScraped = "browser-scraped"
     case sources = "sources"
     case playerHUD = "player-hud"
     case settings = "settings"
@@ -87,7 +89,11 @@ public final class AppEnvironment: ObservableObject {
         self.previewScenario = previewScenario
         self.smokeTestPlayback = smokeTestPlayback
         if previewScenario != nil || smokeTestPlayback != nil {
-            self.settings = AppSettings()
+            var initialSettings = AppSettings()
+            if previewScenario == .browserScraped {
+                initialSettings.enableMetadataDisplay = true
+            }
+            self.settings = initialSettings
             let demoSources = Self.makePreviewSources()
             self.sources = demoSources
             self.history = Self.makePreviewHistory(sources: demoSources)
@@ -248,7 +254,7 @@ public final class AppEnvironment: ObservableObject {
     }
 }
 
-/// 预览截图专用只读虚拟文件系统（仅返回安全虚构目录/电影片单）。
+/// 预览截图专用只读虚拟文件系统（仅返回安全虚构目录/电影片单、标准 `.nfo` 及动态合成的高清预览封面图）。
 private actor PreviewVFSProvider: VFSProvider {
     nonisolated let kind: MediaSourceKind
     private let source: MediaSourceConfig
@@ -265,22 +271,103 @@ private actor PreviewVFSProvider: VFSProvider {
         [
             VFSEntry(path: "/4K科幻精选", name: "4K科幻精选", isDirectory: true, size: 0, modifiedAt: Date()),
             VFSEntry(path: "/自然纪录片合集", name: "自然纪录片合集", isDirectory: true, size: 0, modifiedAt: Date()),
-            VFSEntry(path: "/动画电影原盘", name: "动画电影原盘", isDirectory: true, size: 0, modifiedAt: Date()),
-            VFSEntry(path: "/星际穿越 (2014) 2160p HDR10 HEVC 10bit Atmos.mkv", name: "星际穿越 (2014) 2160p HDR10 HEVC 10bit Atmos.mkv", isDirectory: false, size: 24_850_120_400, modifiedAt: Date()),
+            VFSEntry(path: "/星际穿越 (2014) 2160p HDR10 中字.mkv", name: "星际穿越 (2014) 2160p HDR10 中字.mkv", isDirectory: false, size: 24_850_120_400, modifiedAt: Date()),
+            VFSEntry(path: "/星际穿越 (2014) 2160p HDR10 中字.nfo", name: "星际穿越 (2014) 2160p HDR10 中字.nfo", isDirectory: false, size: 2_400, modifiedAt: Date()),
+            VFSEntry(path: "/星际穿越 (2014) 2160p HDR10 中字-fanart.jpg", name: "星际穿越 (2014) 2160p HDR10 中字-fanart.jpg", isDirectory: false, size: 120_000, modifiedAt: Date()),
+            VFSEntry(path: "/星际穿越 (2014) 2160p HDR10 中字.chs.ass", name: "星际穿越 (2014) 2160p HDR10 中字.chs.ass", isDirectory: false, size: 128_400, modifiedAt: Date()),
+            VFSEntry(path: "/星际穿越 (2014) 1080p 无码重制版.mp4", name: "星际穿越 (2014) 1080p 无码重制版.mp4", isDirectory: false, size: 6_420_000_000, modifiedAt: Date()),
+            VFSEntry(path: "/星际穿越 (2014) 1080p 无码重制版.nfo", name: "星际穿越 (2014) 1080p 无码重制版.nfo", isDirectory: false, size: 2_300, modifiedAt: Date()),
+            VFSEntry(path: "/星际穿越 (2014) 1080p 无码重制版-fanart.jpg", name: "星际穿越 (2014) 1080p 无码重制版-fanart.jpg", isDirectory: false, size: 110_000, modifiedAt: Date()),
             VFSEntry(path: "/沙丘2 (2024) 4K DV HEVC.mp4", name: "沙丘2 (2024) 4K DV HEVC.mp4", isDirectory: false, size: 18_420_000_000, modifiedAt: Date()),
-            VFSEntry(path: "/奥本海默 (2023) 2160p HDR10+ HEVC TrueHD.mkv", name: "奥本海默 (2023) 2160p HDR10+ HEVC TrueHD.mkv", isDirectory: false, size: 28_100_000_000, modifiedAt: Date()),
-            VFSEntry(path: "/地球脉动 S03E01.2160p.HEVC.mkv", name: "地球脉动 S03E01.2160p.HEVC.mkv", isDirectory: false, size: 6_340_000_000, modifiedAt: Date()),
-            VFSEntry(path: "/星际穿越 (2014) 2160p HDR10 HEVC 10bit Atmos.chs.ass", name: "星际穿越 (2014) 2160p HDR10 HEVC 10bit Atmos.chs.ass", isDirectory: false, size: 128_400, modifiedAt: Date()),
-            VFSEntry(path: "/星际穿越 (2014).nfo", name: "星际穿越 (2014).nfo", isDirectory: false, size: 4_820, modifiedAt: Date()),
+            VFSEntry(path: "/沙丘2 (2024) 4K DV HEVC.nfo", name: "沙丘2 (2024) 4K DV HEVC.nfo", isDirectory: false, size: 2_200, modifiedAt: Date()),
+            VFSEntry(path: "/沙丘2 (2024) 4K DV HEVC-fanart.jpg", name: "沙丘2 (2024) 4K DV HEVC-fanart.jpg", isDirectory: false, size: 115_000, modifiedAt: Date()),
+            VFSEntry(path: "/旅行航拍原始素材_未刮削.mkv", name: "旅行航拍原始素材_未刮削.mkv", isDirectory: false, size: 3_180_000_000, modifiedAt: Date()),
             VFSEntry(path: "/poster.jpg", name: "poster.jpg", isDirectory: false, size: 642_000, modifiedAt: Date())
         ]
     }
 
     func readHead(path: String, length: Int) async throws -> Data { Data() }
     func readTail(path: String, length: Int) async throws -> Data { Data() }
-    func read(path: String, offset: Int64, length: Int) async throws -> Data { Data() }
+
+    func read(path: String, offset: Int64, length: Int) async throws -> Data {
+        guard offset == 0 else { return Data() }
+        if path.hasSuffix("2160p HDR10 中字.nfo") || path.hasSuffix("1080p 无码重制版.nfo") {
+            let xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <movie>
+              <num>SCI-2014</num>
+              <title>星际穿越：五维时空典藏版</title>
+              <premiered>2014-11-07</premiered>
+              <year>2014</year>
+              <runtime>169</runtime>
+              <rating>9.4</rating>
+              <studio>Syncopy / Paramount</studio>
+              <actor><name>Matthew McConaughey</name></actor>
+              <actor><name>Anne Hathaway</name></actor>
+              <genre>科幻</genre>
+              <genre>IMAX</genre>
+              <plot>人类探索虫洞彼端宜居星球的史诗旅程，同目录保留 4K HDR 中字与 1080p 两个版本以便对比。</plot>
+            </movie>
+            """
+            return Data(xml.utf8)
+        }
+        if path.hasSuffix("沙丘2 (2024) 4K DV HEVC.nfo") {
+            let xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <movie>
+              <num>DUNE-2024</num>
+              <title>沙丘2：厄拉科斯传奇</title>
+              <premiered>2024-03-01</premiered>
+              <year>2024</year>
+              <runtime>166</runtime>
+              <rating>8.8</rating>
+              <studio>Legendary Pictures</studio>
+              <actor><name>Timothée Chalamet</name></actor>
+              <actor><name>Zendaya</name></actor>
+              <genre>动作</genre>
+              <genre>科幻</genre>
+              <plot>保罗·厄崔迪与弗雷曼人并肩作战，在沙海之上书写史诗篇章。</plot>
+            </movie>
+            """
+            return Data(xml.utf8)
+        }
+        if path.hasSuffix("星际穿越 (2014) 2160p HDR10 中字-fanart.jpg") {
+            return Self.renderPreviewArtwork(code: "SCI-2014", title: "4K HDR · 中字版", c1: UIColor(red: 0.14, green: 0.25, blue: 0.48, alpha: 1), c2: UIColor(red: 0.88, green: 0.56, blue: 0.16, alpha: 1))
+        }
+        if path.hasSuffix("星际穿越 (2014) 1080p 无码重制版-fanart.jpg") {
+            return Self.renderPreviewArtwork(code: "SCI-2014", title: "1080P · 对比版本", c1: UIColor(red: 0.34, green: 0.14, blue: 0.28, alpha: 1), c2: UIColor(red: 0.92, green: 0.32, blue: 0.38, alpha: 1))
+        }
+        if path.hasSuffix("沙丘2 (2024) 4K DV HEVC-fanart.jpg") {
+            return Self.renderPreviewArtwork(code: "DUNE-2024", title: "4K Dolby Vision", c1: UIColor(red: 0.38, green: 0.22, blue: 0.10, alpha: 1), c2: UIColor(red: 0.95, green: 0.66, blue: 0.22, alpha: 1))
+        }
+        return Data()
+    }
+
     func size(path: String) async throws -> Int64 { 24_850_120_400 }
     func makeChunkSource(path: String) async throws -> any StreamChunkSource { DataChunkSource(data: Data()) }
+
+    private nonisolated static func renderPreviewArtwork(code: String, title: String, c1: UIColor, c2: UIColor) -> Data {
+        let size = CGSize(width: 480, height: 280)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let img = renderer.image { ctx in
+            let cg = ctx.cgContext
+            let colors = [c1.cgColor, c2.cgColor] as CFArray
+            if let grad = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) {
+                cg.drawLinearGradient(grad, start: .zero, end: CGPoint(x: size.width, y: size.height), options: [])
+            }
+            let codeAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.monospacedSystemFont(ofSize: 38, weight: .black),
+                .foregroundColor: UIColor.white
+            ]
+            NSString(string: code).draw(at: CGPoint(x: 28, y: 84), withAttributes: codeAttrs)
+            let subAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 22, weight: .bold),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.92)
+            ]
+            NSString(string: title).draw(at: CGPoint(x: 28, y: 142), withAttributes: subAttrs)
+        }
+        return img.jpegData(compressionQuality: 0.88) ?? Data()
+    }
 }
 
 /// CI 实时播放冒烟测试用本地文件只读 VFSProvider（经完整 ReadAheadStreamCache -> LocalHTTPStreamProxy -> FSPlayer 管线）。
