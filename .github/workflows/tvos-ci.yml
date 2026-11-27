@@ -66,26 +66,41 @@ jobs:
           /usr/libexec/PlistBuddy -c "Print :NSLocalNetworkUsageDescription" "$APP/Info.plist"
           /usr/libexec/PlistBuddy -c "Print :NSBonjourServices" "$APP/Info.plist"
           /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist"
+          python3 - "$APP/Info.plist" <<'PY'
+          import plistlib, sys
+          with open(sys.argv[1], "rb") as f:
+              info = plistlib.load(f)
+          bundle_id = info.get("CFBundleIdentifier")
+          display_name = info.get("CFBundleDisplayName")
+          short_ver = info.get("CFBundleShortVersionString")
+          build_ver = info.get("CFBundleVersion")
+          print(f"CFBundleIdentifier={bundle_id}")
+          print(f"CFBundleDisplayName={display_name}")
+          print(f"CFBundleShortVersionString={short_ver} ({build_ver})")
+          assert bundle_id == "local.personal.cinedecktv.scraper", f"Unexpected CFBundleIdentifier: {bundle_id}"
+          assert display_name == "CineDeck削刮版", f"Unexpected CFBundleDisplayName: {display_name}"
+          assert short_ver == "0.5.1" and str(build_ver) == "13", f"Unexpected version: {short_ver} ({build_ver})"
+          PY
           echo "=== CineDeckTV linked libraries ==="
           otool -L "$APP/CineDeckTV"
           otool -L "$APP/CineDeckTV" | grep -q "AVKit.framework/AVKit" || { echo "::error::AVKit.framework not linked in CineDeckTV binary!"; exit 1; }
           ls -la "$APP/Frameworks"
       - name: Package unsigned IPA
         run: |
-          rm -rf Payload CineDeckTV-v0.5.0-Scraper-Unsigned.ipa
+          rm -rf Payload CineDeckTV-Scraper-Dual-v0.5.1-Unsigned.ipa
           mkdir -p Payload
           cp -R "build/Release-appletvos/CineDeckTV.app" Payload/
-          zip -qry "CineDeckTV-v0.5.0-Scraper-Unsigned.ipa" Payload
+          zip -qry "CineDeckTV-Scraper-Dual-v0.5.1-Unsigned.ipa" Payload
           rm -rf Payload
-          ls -lh CineDeckTV-v0.5.0-Scraper-Unsigned.ipa
-          sha256sum CineDeckTV-v0.5.0-Scraper-Unsigned.ipa | tee CineDeckTV-v0.5.0-Scraper-Unsigned.ipa.sha256
+          ls -lh CineDeckTV-Scraper-Dual-v0.5.1-Unsigned.ipa
+          sha256sum CineDeckTV-Scraper-Dual-v0.5.1-Unsigned.ipa | tee CineDeckTV-Scraper-Dual-v0.5.1-Unsigned.ipa.sha256
       - name: Upload IPA + checksum
         uses: actions/upload-artifact@v4
         with:
-          name: CineDeckTV-v0.5.0-Scraper-IPA
+          name: CineDeckTV-Scraper-Dual-v0.5.1-IPA
           path: |
-            CineDeckTV-v0.5.0-Scraper-Unsigned.ipa
-            CineDeckTV-v0.5.0-Scraper-Unsigned.ipa.sha256
+            CineDeckTV-Scraper-Dual-v0.5.1-Unsigned.ipa
+            CineDeckTV-Scraper-Dual-v0.5.1-Unsigned.ipa.sha256
           retention-days: 30
 
   preview-tvos-screenshots:
@@ -124,8 +139,8 @@ jobs:
           xcrun simctl install "$UDID" "$APP"
           mkdir -p screenshots
           for screen in home browser-grid browser-list browser-scraped sources player-hud settings; do
-            xcrun simctl terminate "$UDID" local.personal.cinedecktv || true
-            SIMCTL_CHILD_CINEDECK_PREVIEW_SCREEN="$screen" xcrun simctl launch "$UDID" local.personal.cinedecktv "--preview-screen=$screen"
+            xcrun simctl terminate "$UDID" local.personal.cinedecktv.scraper || true
+            SIMCTL_CHILD_CINEDECK_PREVIEW_SCREEN="$screen" xcrun simctl launch "$UDID" local.personal.cinedecktv.scraper "--preview-screen=$screen"
             sleep 4
             xcrun simctl io "$UDID" screenshot "screenshots/${screen}.png"
             ls -lh "screenshots/${screen}.png"
@@ -135,7 +150,7 @@ jobs:
         run: |
           set -euo pipefail
           UDID=$(python3 -c 'import json,subprocess; d=json.loads(subprocess.check_output(["xcrun","simctl","list","devices","available","-j"])); ts=[devs for k,devs in sorted(d.get("devices",{}).items(),reverse=True) if "tvOS" in k and devs]; print(next((x["udid"] for x in ts[0] if "Apple TV 4K" in x.get("name","")), ts[0][0]["udid"]))')
-          DATA_DIR=$(xcrun simctl get_app_container "$UDID" local.personal.cinedecktv data)
+          DATA_DIR=$(xcrun simctl get_app_container "$UDID" local.personal.cinedecktv.scraper data)
           echo "App data container: $DATA_DIR"
           mkdir -p "$DATA_DIR/tmp"
           SMOKE_MP4="$DATA_DIR/tmp/smoke.mp4"
@@ -223,8 +238,8 @@ jobs:
           test -s "$SMOKE_MP4"
 
           BEFORE_LOGS=$(ls -1 "$HOME/Library/Logs/DiagnosticReports"/CineDeckTV* 2>/dev/null || true)
-          xcrun simctl terminate "$UDID" local.personal.cinedecktv || true
-          LAUNCH_OUT=$(SIMCTL_CHILD_CINEDECK_SMOKE_TEST_VIDEO="$SMOKE_MP4" SIMCTL_CHILD_CINEDECK_SMOKE_TEST_STATUS="$SMOKE_STATUS" xcrun simctl launch "$UDID" local.personal.cinedecktv)
+          xcrun simctl terminate "$UDID" local.personal.cinedecktv.scraper || true
+          LAUNCH_OUT=$(SIMCTL_CHILD_CINEDECK_SMOKE_TEST_VIDEO="$SMOKE_MP4" SIMCTL_CHILD_CINEDECK_SMOKE_TEST_STATUS="$SMOKE_STATUS" xcrun simctl launch "$UDID" local.personal.cinedecktv.scraper)
           echo "Launch output: $LAUNCH_OUT"
           PID=$(echo "$LAUNCH_OUT" | awk -F': ' '{print $2}' | tr -d '[:space:]')
           echo "Launched PID: $PID"
@@ -265,7 +280,7 @@ jobs:
             exit 1
           fi
           grep -q "first-frame" "$SMOKE_STATUS" || echo "::warning::first-frame marker not logged within 6s (check screenshot)"
-          xcrun simctl terminate "$UDID" local.personal.cinedecktv || true
+          xcrun simctl terminate "$UDID" local.personal.cinedecktv.scraper || true
       - name: Upload tvOS 27 Simulator screenshots
         uses: actions/upload-artifact@v4
         with:

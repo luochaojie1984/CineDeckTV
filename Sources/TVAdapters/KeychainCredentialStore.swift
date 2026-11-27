@@ -3,7 +3,7 @@ import Security
 
 /// 密码只进 Keychain，绝不写进 JSON / UserDefaults / 日志。
 public enum KeychainCredentialStore {
-    private static let service = "local.personal.cinedecktv"
+    private static let service = Bundle.main.bundleIdentifier ?? "local.personal.cinedecktv.scraper"
 
     public static func save(password: String, accountID: String) throws {
         guard let data = password.data(using: .utf8) else { return }

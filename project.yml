@@ -60,9 +60,9 @@ targets:
     info:
       path: Sources/TVApp/Info.plist
       properties:
-        CFBundleDisplayName: CineDeckTV
-        CFBundleShortVersionString: "0.5.0"
-        CFBundleVersion: "12"
+        CFBundleDisplayName: "CineDeck削刮版"
+        CFBundleShortVersionString: "0.5.1"
+        CFBundleVersion: "13"
         NSLocalNetworkUsageDescription: "用于发现并访问局域网内的 SMB / WebDAV 影音服务器"
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
@@ -80,7 +80,7 @@ targets:
           - Fonts/CineDeck-Smiley.ttf
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: local.personal.cinedecktv
+        PRODUCT_BUNDLE_IDENTIFIER: local.personal.cinedecktv.scraper
         SWIFT_VERSION: "6.0"
         TARGETED_DEVICE_FAMILY: "3"
         SWIFT_STRICT_CONCURRENCY: complete
