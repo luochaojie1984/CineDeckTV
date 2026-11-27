@@ -62,9 +62,9 @@ public final class DirectoryMetadataLoader: ObservableObject {
     private var activeKey: String?
     private var loadTask: Task<Void, Never>?
 
-    private static let maxNFOSize: Int64 = 256 * 1024
-    private static let maxImageSize: Int64 = 8 * 1024 * 1024
-    private static let maxConcurrency = 3
+    private nonisolated static let maxNFOSize: Int64 = 256 * 1024
+    private nonisolated static let maxImageSize: Int64 = 8 * 1024 * 1024
+    private nonisolated static let maxConcurrency = 3
 
     public init() {}
 
