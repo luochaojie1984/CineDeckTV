@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleShortVersionString</key>
-    <string>0.4.0</string>
+    <string>0.4.1</string>
     <key>CFBundleVersion</key>
-    <string>6</string>
+    <string>7</string>
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>
@@ -20,6 +20,14 @@
         <string>_smb._tcp</string>
         <string>_webdav._tcp</string>
         <string>_webdavs._tcp</string>
+    </array>
+    <key>UIAppFonts</key>
+    <array>
+        <string>Fonts/CineDeck-Kaiti.ttf</string>
+        <string>Fonts/CineDeck-Songti.ttf</string>
+        <string>Fonts/CineDeck-Fangsong.ttf</string>
+        <string>Fonts/CineDeck-Yuanti.ttf</string>
+        <string>Fonts/CineDeck-Smiley.ttf</string>
     </array>
 </dict>
 </plist>

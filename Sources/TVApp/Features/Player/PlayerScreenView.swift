@@ -132,7 +132,7 @@ public struct PlayerScreenView: View {
 
             if previewOpenHUD {
                 SubtitleOverlayView(
-                    cues: [SubtitleCue(start: 0, end: 99999, text: "不要温顺地走进那个良夜 —— 外挂字幕支持字体 / 大小 / 位置 / 描边实时调节")],
+                    cues: [SubtitleCue(start: 0, end: 99999, text: "不要温顺地走进那个良夜 —— 楷体 / 宋体 / 仿宋 / 圆体 / 电影艺术黑实时生效")],
                     currentTime: 100,
                     style: previewOverlaySubtitleStyle
                 )
@@ -285,7 +285,7 @@ public struct PlayerScreenView: View {
                             },
                             onClose: {
                                 withAnimation(TVTokens.Motion.focus) { activeDrawer = nil }
-                                hudFocus = .playPause
+                                claimHUDFocus(.decodeAndEngine)
                                 scheduleHUDAutoHide()
                             }
                         )
@@ -339,6 +339,8 @@ public struct PlayerScreenView: View {
         .task {
             subtitleStyle = env.settings.subtitleStyle
             if previewOpenHUD {
+                subtitleStyle.fontFamily = .kaiti
+                subtitleStyle.foregroundHex = "#FFD859"
                 showHUD = true
                 showTechStats = true
                 activeDrawer = .subtitles
@@ -823,23 +825,35 @@ public struct PlayerScreenView: View {
         if coordinator.isPlaying { coordinator.pause() } else { coordinator.play() }
     }
 
-    /// 播放时按遥控器确定键：弹出贴底进度控制条，立即把焦点移交到控制栏按钮以便遥控器左右键顺畅调节！
+    /// 播放时按遥控器确定键：弹出贴底进度控制条，通过多次焦点确认保证首帧即清晰高亮当前按钮！
     private func openHUDFromSelect() {
         withAnimation(TVTokens.Motion.focus) {
             showHUD = true
         }
-        DispatchQueue.main.async {
-            hudFocus = .decodeAndEngine
-        }
+        claimHUDFocus(.decodeAndEngine)
         scheduleHUDAutoHide()
     }
 
     private func bumpHUD() {
         withAnimation(TVTokens.Motion.focus) { showHUD = true }
-        DispatchQueue.main.async {
-            if hudFocus == nil { hudFocus = .playPause }
+        if hudFocus == nil {
+            claimHUDFocus(.playPause)
         }
         scheduleHUDAutoHide()
+    }
+
+    private func claimHUDFocus(_ target: HUDFocusItem) {
+        hudFocus = target
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 55_000_000)
+            if showHUD && activeDrawer == nil && hudFocus == nil {
+                hudFocus = target
+            }
+            try? await Task.sleep(nanoseconds: 110_000_000)
+            if showHUD && activeDrawer == nil && hudFocus == nil {
+                hudFocus = target
+            }
+        }
     }
 
     private func scheduleHUDAutoHide() {
@@ -891,7 +905,7 @@ public struct PlayerScreenView: View {
             commitActiveScrub()
         } else if activeDrawer != nil {
             withAnimation(TVTokens.Motion.focus) { activeDrawer = nil }
-            DispatchQueue.main.async { hudFocus = .playPause }
+            claimHUDFocus(.decodeAndEngine)
             scheduleHUDAutoHide()
         } else if nextEpisodeCountdown != nil {
             nextEpisodeTimerTask?.cancel()
@@ -1067,8 +1081,15 @@ public struct PlayerScreenView: View {
 
                 Button {
                     hudAutoHideTask?.cancel()
+                    let nextDrawer: ActivePlayerDrawer? = (activeDrawer == .decodeAndEngine ? nil : .decodeAndEngine)
                     withAnimation(TVTokens.Motion.focus) {
-                        activeDrawer = activeDrawer == .decodeAndEngine ? nil : .decodeAndEngine
+                        activeDrawer = nextDrawer
+                    }
+                    if nextDrawer != nil {
+                        hudFocus = nil
+                    } else {
+                        claimHUDFocus(.decodeAndEngine)
+                        scheduleHUDAutoHide()
                     }
                 } label: {
                     Label("解码·内核", systemImage: "cpu.fill")
@@ -1082,8 +1103,15 @@ public struct PlayerScreenView: View {
 
                 Button {
                     hudAutoHideTask?.cancel()
+                    let nextDrawer: ActivePlayerDrawer? = (activeDrawer == .subtitles ? nil : .subtitles)
                     withAnimation(TVTokens.Motion.focus) {
-                        activeDrawer = activeDrawer == .subtitles ? nil : .subtitles
+                        activeDrawer = nextDrawer
+                    }
+                    if nextDrawer != nil {
+                        hudFocus = nil
+                    } else {
+                        claimHUDFocus(.subtitles)
+                        scheduleHUDAutoHide()
                     }
                 } label: {
                     Label("字幕设置", systemImage: "captions.bubble.fill")
@@ -1097,8 +1125,15 @@ public struct PlayerScreenView: View {
 
                 Button {
                     hudAutoHideTask?.cancel()
+                    let nextDrawer: ActivePlayerDrawer? = (activeDrawer == .audio ? nil : .audio)
                     withAnimation(TVTokens.Motion.focus) {
-                        activeDrawer = activeDrawer == .audio ? nil : .audio
+                        activeDrawer = nextDrawer
+                    }
+                    if nextDrawer != nil {
+                        hudFocus = nil
+                    } else {
+                        claimHUDFocus(.audio)
+                        scheduleHUDAutoHide()
                     }
                 } label: {
                     Label("音轨", systemImage: "waveform")
@@ -1150,6 +1185,12 @@ public struct PlayerScreenView: View {
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .tvGlassSurface(cornerRadius: 22, clear: false)
+        .defaultFocus($hudFocus, .decodeAndEngine)
+        .onAppear {
+            if !previewOpenHUD && activeDrawer == nil {
+                claimHUDFocus(.decodeAndEngine)
+            }
+        }
     }
 
     private func autoNextOverlay(next: VFSEntry, countdown: Int) -> some View {

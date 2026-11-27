@@ -236,7 +236,7 @@ public struct HomeSpotlightView: View {
                 Spacer()
 
                 HStack(spacing: 10) {
-                    plaqueChip("FSPlayer + Metal")
+                    plaqueChip("KSPlayer 5.6 + Metal")
                     plaqueChip("闭环同步快进")
                     Spacer()
                     if let hero {

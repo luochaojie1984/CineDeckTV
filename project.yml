@@ -25,6 +25,11 @@ targets:
     platform: tvOS
     sources:
       - path: Sources/TVApp
+        excludes:
+          - Resources/Fonts/**
+      - path: Sources/TVApp/Resources/Fonts
+        type: folder
+        buildPhase: resources
       - path: Sources/PlaybackEngine
       - path: Sources/TVAdapters
     dependencies:
@@ -54,8 +59,8 @@ targets:
       path: Sources/TVApp/Info.plist
       properties:
         CFBundleDisplayName: CineDeckTV
-        CFBundleShortVersionString: "0.4.0"
-        CFBundleVersion: "6"
+        CFBundleShortVersionString: "0.4.1"
+        CFBundleVersion: "7"
         NSLocalNetworkUsageDescription: "用于发现并访问局域网内的 SMB / WebDAV 影音服务器"
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
@@ -64,6 +69,12 @@ targets:
           - "_smb._tcp"
           - "_webdav._tcp"
           - "_webdavs._tcp"
+        UIAppFonts:
+          - Fonts/CineDeck-Kaiti.ttf
+          - Fonts/CineDeck-Songti.ttf
+          - Fonts/CineDeck-Fangsong.ttf
+          - Fonts/CineDeck-Yuanti.ttf
+          - Fonts/CineDeck-Smiley.ttf
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: local.personal.cinedecktv

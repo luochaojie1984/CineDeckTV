@@ -165,6 +165,10 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         pref.Outline = Float(min(6.0, max(0, style.outlineWidth)))
         pref.PrimaryColour = assColor(fromHex: style.foregroundHex, defaultColor: 0xFFFFFF00)
         pref.OutlineColour = assColor(fromHex: style.outlineHex, defaultColor: 0x00000000)
+        Self.writeCString(style.fontFamily.libassFamilyName, into: &pref.FontName)
+        if let fontsDir = SubtitleFontRegistry.shared.bundledFontsDirectoryPath {
+            Self.writeCString(fontsDir, into: &pref.FontsDir)
+        }
         player.subtitlePreference = pref
         let delay = Float(style.offsetSeconds)
         if abs(delay - lastAppliedSubtitleDelay) > 0.001 {
@@ -394,6 +398,19 @@ public final class FSPlayerEngineAdapter: PlayerEngine {
         case .aspectFit: return .aspectFit
         case .aspectFill: return .aspectFill
         case .fill: return .fill
+        }
+    }
+
+    private static func writeCString<T>(_ string: String, into tuple: inout T) {
+        withUnsafeMutableBytes(of: &tuple) { raw in
+            guard let base = raw.baseAddress, raw.count > 1 else { return }
+            raw.initializeMemory(as: UInt8.self, repeating: 0)
+            let utf8 = Array(string.utf8.prefix(raw.count - 1))
+            utf8.withUnsafeBytes { src in
+                if let srcBase = src.baseAddress, !utf8.isEmpty {
+                    base.copyMemory(from: srcBase, byteCount: utf8.count)
+                }
+            }
         }
     }
 

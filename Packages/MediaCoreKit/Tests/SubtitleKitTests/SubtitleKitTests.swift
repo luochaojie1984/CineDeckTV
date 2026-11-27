@@ -61,4 +61,24 @@ struct SubtitleKitTests {
         #expect(legacyDecoded.fontFamily == .system)
         #expect(legacyDecoded.backgroundOpacity == 0.32)
     }
+
+    @Test("7 款中文字体（含楷体/宋体/仿宋/圆体/电影艺术黑）与 10 种配色及旧版 rawValue 兼容")
+    func chineseFontsAndLegacyMapping() throws {
+        #expect(SubtitleStyleConfig.FontFamily.allCases.count == 7)
+        #expect(SubtitleStyleConfig.FontFamily.allCases.contains(.kaiti))
+        #expect(SubtitleStyleConfig.FontFamily.allCases.contains(.songti))
+        #expect(SubtitleStyleConfig.FontFamily.allCases.contains(.fangsong))
+        #expect(SubtitleStyleConfig.FontFamily.allCases.contains(.rounded))
+        #expect(SubtitleStyleConfig.FontFamily.allCases.contains(.smiley))
+        #expect(SubtitleStyleConfig.colorPresets.count == 10)
+
+        let legacySerif = Data("{\"fontFamily\": \"serif\", \"fontSize\": 44}".utf8)
+        let decodedSerif = try JSONDecoder().decode(SubtitleStyleConfig.self, from: legacySerif)
+        #expect(decodedSerif.fontFamily == .songti)
+        #expect(decodedSerif.fontSize == 44)
+
+        let legacyMono = Data("{\"fontFamily\": \"monospaced\"}".utf8)
+        let decodedMono = try JSONDecoder().decode(SubtitleStyleConfig.self, from: legacyMono)
+        #expect(decodedMono.fontFamily == .system)
+    }
 }

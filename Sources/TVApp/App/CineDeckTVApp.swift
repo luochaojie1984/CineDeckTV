@@ -7,6 +7,7 @@ struct CineDeckTVApp: App {
 
     init() {
         signal(SIGPIPE, SIG_IGN)
+        SubtitleFontRegistry.shared.ensureRegistered()
     }
     @Environment(\.scenePhase) private var scenePhase
     @State private var wasInBackground = false

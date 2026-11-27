@@ -271,20 +271,26 @@ public struct TVPlayerOptionButtonStyle: ButtonStyle {
                     shape.fill(
                         isFocused
                             ? Color.white
-                            : (isSelected ? accentTint.opacity(0.42) : Color.white.opacity(0.11))
+                            : (isSelected ? accentTint.opacity(0.44) : Color.white.opacity(0.11))
                     )
                 )
                 .overlay(
                     shape.strokeBorder(
                         isFocused
                             ? accentTint
-                            : (isSelected ? accentTint.opacity(0.88) : Color.white.opacity(0.18)),
-                        lineWidth: isFocused ? 2.5 : (isSelected ? 1.5 : 1.0)
+                            : (isSelected ? accentTint.opacity(0.90) : Color.white.opacity(0.18)),
+                        lineWidth: isFocused ? 3.5 : (isSelected ? 1.8 : 1.0)
                     )
                 )
                 .clipShape(shape)
+                .shadow(
+                    color: isFocused ? Color.white.opacity(0.48) : Color.clear,
+                    radius: isFocused ? 7 : 0,
+                    x: 0,
+                    y: isFocused ? 2 : 0
+                )
                 .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-                .animation(.easeOut(duration: 0.14), value: isFocused)
+                .animation(.easeOut(duration: 0.12), value: isFocused)
                 .onChange(of: isFocused) { _, nowFocused in
                     if nowFocused { UISoundPlayer.focusMove() }
                 }
